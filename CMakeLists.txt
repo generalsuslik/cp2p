@@ -14,6 +14,7 @@ else ()
 endif ()
 
 add_executable(${PROJECT_NAME} main.cpp
-        src/Peer.cpp
-        inc/Peer.hpp)
+        yahanet/src/Peer.cpp
+        yahanet/inc/Peer.hpp)
+
 target_link_libraries(${PROJECT_NAME} Boost::system)
