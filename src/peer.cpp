@@ -2,13 +2,14 @@
 // Created by generalsuslik on 22.01.25.
 //
 
-#include "../inc/Peer.hpp"
+#include "../inc/peer.hpp"
 
 #include <iostream>
 #include <string>
 
 Peer::Peer(asio::io_context& io_context, const unsigned short port)
-        : socket_(io_context, udp::endpoint(asio::ip::udp::v4(), port)) {
+        : socket_(io_context, udp::endpoint(asio::ip::udp::v4(), port))
+        , recv_buffer_({}) {
     receive();
 }
 
