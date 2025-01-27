@@ -4,8 +4,6 @@
 
 #include "../inc/crypto.hpp"
 
-#include <iostream>
-#include <ostream>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -15,6 +13,9 @@
 
 constexpr int k_bits = 2048;
 
+/*
+ * generates [ PRIVATE_KEY, PUBLIC_KEY ] pair
+ */
 std::pair<std::string, std::string> generate_rsa_keys() {
     EVP_PKEY* rsa_key = EVP_RSA_gen(k_bits);
     if (!rsa_key) {

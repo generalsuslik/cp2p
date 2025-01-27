@@ -8,20 +8,28 @@
 #include <boost/asio.hpp>
 
 namespace asio = boost::asio;
-using udp = asio::ip::udp;
+using tcp = asio::ip::tcp;
 
 class Peer {
 private:
-    udp::socket socket_;
-    udp::endpoint remote_endpoint_;
-    std::array<char, 1024> recv_buffer_;
-
-    void receive();
+    asio::io_context io_context_;
+    tcp::acceptor acceptor_;
+    std::vector<std::shared_ptr<tcp::socket>> connections_;
+    std::mutex connections_mutex_;
 
 public:
-    Peer(asio::io_context& io_context, unsigned short port);
+    explicit Peer(uint16_t port);
 
-    void send_message(const std::string& message, const udp::endpoint& target);
+    void start();
+
+    void connect(const tcp::endpoint& endpoint);
+
+    void send_message(const std::string& message);
+
+private:
+    void accept();
+
+    void read(std::shared_ptr<tcp::socket> socket);
 };
 
 
