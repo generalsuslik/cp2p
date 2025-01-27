@@ -4,6 +4,16 @@ project(cp2p VERSION 0.1)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+    if (CLANG_TIDY_EXE)
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+        message(STATUS "clang-tidy set")
+    else ()
+        message(WARNING "Could not find clang-tidy")
+    endif ()
+endif ()
+
 #-----BOOST-----#
 find_package(Boost REQUIRED COMPONENTS system)
 

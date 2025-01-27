@@ -1,0 +1,1 @@
+# cp2p - powerful library for secure p2p networking, written in c++ with boost.asio & openssl

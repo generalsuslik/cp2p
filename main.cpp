@@ -4,9 +4,13 @@
 
 #include "inc/peer.hpp"
 
+#include <boost/asio.hpp>
+
 #include <iostream>
 
-void cli_send(Peer& peer) {
+namespace asio = boost::asio;
+
+void cli_send(cp2p::Peer& peer) {
     for (;;) {
         std::string message;
         std::getline(std::cin, message);
@@ -17,9 +21,11 @@ void cli_send(Peer& peer) {
     }
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2 || argc > 3) {
-        std::cerr << "Usage: " << argv[0] << " <listening_port> [<target_port>]" << std::endl;
+int main(const int argc, char* argv[]) {
+    using tcp = asio::ip::tcp;
+
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <listening_port> <target_port>" << std::endl;
         return 1;
     }
 
@@ -27,11 +33,25 @@ int main(int argc, char* argv[]) {
     const uint16_t target_port = std::stoi(argv[2]);
     const tcp::endpoint endpoint(asio::ip::address::from_string("127.0.0.1"), target_port);
 
-    Peer peer(listening_port);
+    cp2p::Peer peer(listening_port);
     peer.start();
     peer.connect(endpoint);
 
-    std::thread send_thread(cli_send, std::ref(peer));
+    peer.set_message_callback([](const std::string& message) {
+       std::cout << "Received: " << message << std::endl;
+    });
+
+    // std::thread send_thread(cli_send, std::ref(peer));
+    std::thread send_thread([&peer]{
+        for (;;) {
+            std::string message;
+            std::getline(std::cin, message);
+            if (message == "exit") {
+                break;
+            }
+            peer.send_message(message);
+        }
+    });
 
     send_thread.join();
 

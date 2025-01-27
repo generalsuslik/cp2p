@@ -8,6 +8,13 @@
 #include <string>
 #include <utility>
 
-std::pair<std::string, std::string> generate_rsa_keys();
+namespace cp2p {
+
+
+    std::pair<std::string, std::string> generate_rsa_keys();
+
+
+} // cp2p
+
 
 #endif //CRYPTO_HPP
