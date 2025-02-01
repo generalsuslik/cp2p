@@ -2,24 +2,13 @@
 // Created by generalsuslik on 22.01.25.
 //
 
-#include "inc/peer.hpp"
+#include "network/inc/peer.hpp"
 
 #include <boost/asio.hpp>
 
 #include <iostream>
 
 namespace asio = boost::asio;
-
-void cli_send(cp2p::Peer& peer) {
-    for (;;) {
-        std::string message;
-        std::getline(std::cin, message);
-        if (message == "exit") {
-            return;
-        }
-        peer.send_message(message);
-    }
-}
 
 int main(const int argc, char* argv[]) {
     using tcp = asio::ip::tcp;
@@ -41,7 +30,6 @@ int main(const int argc, char* argv[]) {
        std::cout << "Received: " << message << std::endl;
     });
 
-    // std::thread send_thread(cli_send, std::ref(peer));
     std::thread send_thread([&peer]{
         for (;;) {
             std::string message;
@@ -57,3 +45,6 @@ int main(const int argc, char* argv[]) {
 
     return 0;
 }
+
+
+
