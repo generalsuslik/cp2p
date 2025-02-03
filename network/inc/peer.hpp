@@ -11,6 +11,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace cp2p {
 
@@ -22,34 +23,31 @@ namespace cp2p {
     private:
         asio::io_context io_context_;
         tcp::acceptor acceptor_;
-        std::deque<std::shared_ptr<tcp::socket>> connections_;
-        std::mutex connections_mutex_;
+        std::unordered_map<
+            std::shared_ptr<tcp::socket>, std::pair<std::vector<unsigned char>, std::vector<unsigned char>>
+        > connection_keys_;
+        std::mutex connection_keys_mutex_;
 
         // for message returning
         std::function<void(const std::string&)> message_callback_;
 
         // cybersecurity goes brrrr brrrr
-        // RSA key pair
-        EVP_PKEY* public_key_;
-        EVP_PKEY* private_key_;
-
-        // AES key (shared between peers)
-        std::vector<unsigned char> aes_key_;
-        std::vector<unsigned char> aes_iv_;
+        // RSA key pair but strings
+        std::string public_key_;
+        std::string private_key_;
 
     public:
         explicit Peer(uint16_t port);
 
-        ~Peer();
-
         void start();
 
         /**
-         * @brief sends connection request to endpoint
+         * @brief sends connection request to endpoint (host:port)
          *
-         * @param endpoint to connect to
+         * @param host host to connect to
+         * @param port host's port
          */
-        void connect(const tcp::endpoint& endpoint);
+        void connect(const std::string& host, uint16_t port);
 
         /**
          * @brief sends message through all the sockets from the connections_ collection
@@ -68,6 +66,7 @@ namespace cp2p {
         void set_message_callback(const std::function<void(const std::string&)>& callback);
 
     private:
+
         /**
          * @brief accepts the incoming connection request
          */
@@ -86,8 +85,14 @@ namespace cp2p {
          * via socket
          *
          * @param socket where AES key is being sent to
+         * @param remote_public_key node-connected-to 's RSA public key
+         * @param aes_key 'my' generated AES key
+         * @param aes_iv 'my' generated AES key
          */
-        void send_AES_key(const std::shared_ptr<tcp::socket>& socket) const;
+        static void send_AES_key(const std::shared_ptr<tcp::socket>& socket,
+                          EVP_PKEY* remote_public_key,
+                          const std::vector<unsigned char>& aes_key,
+                          const std::vector<unsigned char>& aes_iv) ;
 
         /**
          * @brief receives "encrypted" (not implemented yet) AES key from socket
@@ -99,6 +104,16 @@ namespace cp2p {
          *
          */
         void receive_AES_key(const std::shared_ptr<tcp::socket>& socket, const std::function<void()>& on_success);
+
+        /**
+         * @brief sends public RSA key through socket so AES key could be encrypted
+         *
+         * @param socket to send public RSA key through
+         */
+        void send_RSA_key(const std::shared_ptr<tcp::socket>& socket) const;
+
+        static void receive_RSA_key(const std::shared_ptr<tcp::socket>& socket,
+                                    const std::function<void(EVP_PKEY*)>& on_success) ;
     };
 
 

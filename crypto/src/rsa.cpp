@@ -34,7 +34,7 @@ namespace cp2p::rsa {
             BIO_free(bio_private);
             EVP_PKEY_free(rsa_key);
             throw std::runtime_error("Failed to write private key to BIO");
-                }
+        }
 
         BIO* bio_public = BIO_new(BIO_s_mem());
         if (!bio_public) {
@@ -84,7 +84,7 @@ namespace cp2p::rsa {
             EVP_PKEY_CTX_free(ctx);
             throw std::runtime_error("Failed to determine encrypted size: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
-                }
+        }
 
         std::vector<unsigned char> encrypted(len);
         if (EVP_PKEY_encrypt(ctx, encrypted.data(), &len,
@@ -92,7 +92,7 @@ namespace cp2p::rsa {
             EVP_PKEY_CTX_free(ctx);
             throw std::runtime_error("Encryption failed: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
-                }
+        }
 
         EVP_PKEY_CTX_free(ctx);
         encrypted.resize(len);
@@ -118,7 +118,7 @@ namespace cp2p::rsa {
             EVP_PKEY_CTX_free(ctx);
             throw std::runtime_error("Failed to determine encrypted size: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
-                }
+        }
 
         std::vector<unsigned char> encrypted(len);
         if (EVP_PKEY_encrypt(ctx, encrypted.data(), &len,
@@ -126,7 +126,7 @@ namespace cp2p::rsa {
             EVP_PKEY_CTX_free(ctx);
             throw std::runtime_error("Encryption failed: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
-                }
+        }
 
         EVP_PKEY_CTX_free(ctx);
         encrypted.resize(len);

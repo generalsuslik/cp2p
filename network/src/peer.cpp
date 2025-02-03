@@ -8,8 +8,6 @@
 #include "../../crypto/inc/rsa.hpp"
 #include "../../util/inc/util.hpp"
 
-#include <openssl/evp.h>
-
 #include <iostream>
 #include <string>
 
@@ -18,16 +16,7 @@ namespace cp2p {
 
     Peer::Peer(const uint16_t port)
             : acceptor_(io_context_, tcp::endpoint(tcp::v4(), port)) {
-        std::tie(aes_key_, aes_iv_) = aes::generate_aes_key_iv();
-
-        auto [_public_key, _private_key] = rsa::generate_rsa_keys();
-        public_key_ = rsa::get_public_key(_public_key);
-        private_key_ = rsa::get_private_key(_private_key);
-    }
-
-    Peer::~Peer() {
-        EVP_PKEY_free(public_key_);
-        EVP_PKEY_free(private_key_);
+        std::tie(public_key_, private_key_) = rsa::generate_rsa_keys();
     }
 
     void Peer::start() {
@@ -37,30 +26,41 @@ namespace cp2p {
         }).detach();
     }
 
-    void Peer::connect(const tcp::endpoint& endpoint) {
+    void Peer::connect(const std::string& host, const uint16_t port) {
+        const auto endpoint = tcp::endpoint(asio::ip::address::from_string(host), port);
         auto socket = std::make_shared<tcp::socket>(io_context_);
 
         socket->async_connect(endpoint,
-            [this, endpoint, socket](const boost::system::error_code& ec) {
+            [this, socket](const boost::system::error_code& ec) {
                 if (ec) {
                     std::cerr << "[Peer::connect] Connection failed: " << ec.message() << std::endl;
                     return;
                 }
-                std::lock_guard lock(connections_mutex_);
-                connections_.push_back(socket);
-                send_AES_key(socket);
-                read(socket);
-                std::cout << "Connected to peer: " << endpoint.address().to_string() << ":"
-                                            << endpoint.port() << std::endl;
+
+                receive_RSA_key(socket, [this, socket](EVP_PKEY* remote_pub_key) {
+                    auto [aes_key, aes_iv] = aes::generate_aes_key_iv();
+
+                    std::lock_guard lock(connection_keys_mutex_);
+                    connection_keys_[socket] = { aes_key, aes_iv };
+
+                    send_AES_key(socket, remote_pub_key, aes_key, aes_iv);
+
+                    read(socket);
+                    std::cout << "Connected to peer: " << socket->remote_endpoint().address().to_string() << ":"
+                                                << socket->remote_endpoint().port() << std::endl;
+                });
             });
     }
 
     void Peer::send_message(const std::string& message) {
-        std::vector<unsigned char> encrypted_msg = aes::aes_encrypt(message, aes_key_, aes_iv_);
-        encrypted_msg.push_back('\n'); // for async_read_until(..., '\n', ...)
+        std::lock_guard lock(connection_keys_mutex_);
+        for (const auto& [socket, aes]: connection_keys_) {
+            const auto& aes_key = aes.first;
+            const auto& aes_iv  = aes.second;
 
-        std::lock_guard lock(connections_mutex_);
-        for (const auto& socket: connections_) {
+            std::vector<unsigned char> encrypted_msg = aes::aes_encrypt(message, aes_key, aes_iv);
+            encrypted_msg.push_back('\n'); // for async_read_until(..., '\n', ...)
+
             async_write(
                 *socket,
                 asio::buffer(encrypted_msg),
@@ -81,9 +81,11 @@ namespace cp2p {
         acceptor_.async_accept(*socket,
             [this, socket](const boost::system::error_code& ec) {
                 if (!ec) {
-                    std::lock_guard lock(connections_mutex_);
-                    connections_.push_back(socket);
+                    send_RSA_key(socket);
+                    std::cout << "Sent RSA key" << std::endl;
                     receive_AES_key(socket, [this, socket] {
+                        std::cout << "Accepted from " << socket->remote_endpoint().address().to_string()
+                                                        << ":" << socket->remote_endpoint().port() << std::endl;
                         read(socket);
                     });
                 }
@@ -95,36 +97,52 @@ namespace cp2p {
         auto buffer = std::make_shared<asio::streambuf>();
         async_read_until(
             *socket, *buffer, '\n',
-            [this, buffer, socket](const boost::system::error_code& error, std::size_t) {
-                if (!error) {
-                    const auto data = buffer->data();
-                    std::vector<unsigned char> encrypted_msg(buffers_begin(data), buffers_end(data));
-
-                    if (!encrypted_msg.empty() && encrypted_msg.back() == '\n') {
-                        encrypted_msg.pop_back();
-                    }
-
-                    const std::string message = aes::aes_decrypt(encrypted_msg, aes_key_, aes_iv_);
-                    if (!message.empty() && message_callback_) {
-                        message_callback_(message);
-                    }
-                    read(socket);
-                } else {
-                    std::cerr << "[Peer::read] Read error: " << error.message() << std::endl;
+            [this, buffer, socket](const boost::system::error_code& ec, std::size_t) {
+                if (ec) {
+                    std::cerr << "[Peer::read] Read error: " << ec.message() << std::endl;
+                    return;
                 }
+                const auto data = buffer->data();
+                std::vector<unsigned char> encrypted_msg(buffers_begin(data), buffers_end(data));
+
+                if (!encrypted_msg.empty() && encrypted_msg.back() == '\n') {
+                    encrypted_msg.pop_back();
+                }
+
+                const auto it = connection_keys_.find(socket);
+                if (it == connection_keys_.end()) {
+                    std::cerr << "[Peer::read] Could not find AES key for this connection" << std::endl;
+                    return;
+                }
+
+                const auto& aes_key = it->second.first;
+                const auto& aes_iv  = it->second.second;
+
+                const std::string decrypted = aes::aes_decrypt(encrypted_msg, aes_key, aes_iv);
+                if (!decrypted.empty() && message_callback_) {
+                    message_callback_(decrypted);
+                }
+                read(socket);
             });
     }
 
-    void Peer::send_AES_key(const std::shared_ptr<tcp::socket>& socket) const {
-        const std::string key_hex = to_hex(aes_key_);
-        const std::string iv_hex  = to_hex(aes_iv_);
+    void Peer::send_AES_key(const std::shared_ptr<tcp::socket>& socket,
+                            EVP_PKEY* remote_public_key,
+                            const std::vector<unsigned char>& aes_key,
+                            const std::vector<unsigned char>& aes_iv) {
+        const std::string key_hex = to_hex(aes_key);
+        const std::string iv_hex  = to_hex(aes_iv);
 
-        std::string message = "AES_KEY " + key_hex + " " + iv_hex + "\n";
+        const std::string combined = key_hex + " " + iv_hex;
 
-        async_write(*socket, asio::buffer(message),
+        const std::vector<unsigned char> encrypted = rsa::rsa_encrypt(remote_public_key, combined);
+        const std::string encrypted_hex = to_hex(encrypted);
+
+        const std::string encrypted_msg = "AES_KEY " + encrypted_hex + "\n";
+        async_write(*socket, asio::buffer(encrypted_msg),
             [](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
-                    std::cerr << "[Peer::send_AES_key] Failed to send message: " << ec.message() << std::endl;
+                    std::cerr << "[Peer::send_AES_key] Failed to send AES key and IV: " << ec.message() << std::endl;
                 }
             });
     }
@@ -132,11 +150,11 @@ namespace cp2p {
     void Peer::receive_AES_key(const std::shared_ptr<tcp::socket>& socket, const std::function<void()>& on_success) {
         auto buffer = std::make_shared<asio::streambuf>();
 
-        // Read until newline ('\n') since the sender terminates the key message with '\n'.
         async_read_until(*socket, *buffer, '\n',
-            [this, buffer, on_success](const boost::system::error_code& ec, std::size_t) {
+            [this, buffer, socket, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
-                    std::cerr << "[Peer::receive_aes_key] Read error: " << ec.message() << std::endl;
+                    std::cerr << "[Peer::receive_AES_key] Failed to receive AES key and IV: "
+                                << ec.message() << std::endl;
                     return;
                 }
 
@@ -144,21 +162,79 @@ namespace cp2p {
                 std::string message;
                 std::getline(stream, message);
 
-                // Check if the message starts with "AES_KEY "
-                // If not => not AES key => error
-                if (message.find("AES_KEY ", 0) != 0) {
-                    std::cerr << "[Peer] Received message is not a valid AES key message." << std::endl;
+                const std::string header = "AES_KEY ";
+                if (message.find(header, 0) != 0) {
+                    std::cerr << "[Peer::receive_AES_key] Wrong header" << std::endl;
                     return;
                 }
 
-                std::istringstream iss(message);
-                std::string header, key_hex, iv_hex;
-                iss >> header >> key_hex >> iv_hex;
+                const std::string encrypted_hex = message.substr(header.size());
+                const std::vector<unsigned char> encrypted_data = from_hex(encrypted_hex);
 
-                aes_key_ = from_hex(key_hex);
-                aes_iv_  = from_hex(iv_hex);
-                std::cout << "[Peer] Received AES key and IV from remote peer." << std::endl;
+                std::vector<unsigned char> decrypted = rsa::rsa_decrypt(
+                    rsa::get_private_key(private_key_), encrypted_data
+                );
+
+                std::string decrypted_str(decrypted.begin(), decrypted.end());
+                std::istringstream iss(decrypted_str);
+                std::string key_hex;
+                std::string iv_hex;
+                if (!(iss >> key_hex >> iv_hex)) {
+                    std::cerr << "[Peer::receive_AES_key] Could not read AES key and IV" << std::endl;
+                    return;
+                }
+
+                iv_hex = iv_hex.substr(0, 32);
+                std::vector<unsigned char> aes_key = from_hex(key_hex);
+                std::vector<unsigned char> aes_iv = from_hex(iv_hex);
+
+                std::lock_guard lock(connection_keys_mutex_);
+                connection_keys_[socket] = { aes_key, aes_iv };
+
+                std::cout << "[Peer] AES key and IV successfully received and stored for this connection." << std::endl;
+
                 on_success();
+            });
+    }
+
+    void Peer::send_RSA_key(const std::shared_ptr<tcp::socket>& socket) const {
+        std::string message = "RSA_KEY " + public_key_ + "\n";
+
+        async_write(*socket, asio::buffer(message),
+            [](const boost::system::error_code& ec, std::size_t) {
+                if (ec) {
+                    std::cerr << "[Peer::send_RSA_key] Could not send public key: " << ec.message() << std::endl;
+                }
+            });
+    }
+
+    void Peer::receive_RSA_key(const std::shared_ptr<tcp::socket>& socket,  const std::function<void(EVP_PKEY*)>& on_success) {
+        auto buffer = std::make_shared<asio::streambuf>();
+
+        async_read_until(*socket, *buffer, '\n',
+            [buffer, on_success](const boost::system::error_code& ec, std::size_t) {
+                if (ec) {
+                    std::cerr << "[Peer::receive_RSA_key] Failed to receive public key: " << ec.message() << std::endl;
+                    return;
+                }
+
+                std::istream stream(buffer.get());
+                std::string line;
+                std::string message;
+                while (std::getline(stream, line)) {
+                    message += line;
+                    message += "\n";
+                }
+                message.pop_back();
+
+                const std::string header = "RSA_KEY ";
+                if (message.find(header, 0) != 0) {
+                    std::cerr << "[Peer::receive_RSA_key] received not public key. Wrong header" << std::endl;
+                    return;
+                }
+                const std::string pub_key = message.substr(header.size());
+
+                on_success(rsa::get_public_key(pub_key));
             });
     }
 

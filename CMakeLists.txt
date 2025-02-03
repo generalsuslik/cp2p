@@ -36,7 +36,7 @@ else ()
 endif ()
 
 # maybe add -flto, this thing reduces build time ~21s -> ~15s
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O2 -fsanitize=address -Wsign-compare")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O2 -fsanitize=address,undefined -Wsign-compare")
 
 add_executable(${PROJECT_NAME} main.cpp
         crypto/src/aes.cpp
