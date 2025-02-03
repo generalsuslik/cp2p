@@ -31,11 +31,11 @@ AES key is used to encrypt the messages, RSA - to encrypt AES key
 ```
 
 ### Usage example:
-<h4>🖥️ terminal1:</h4>
+#### 🖥️ terminal1:
 ```bash
 ./cp2p 1234 1235
 ```
-<h4>🖥️ terminal2:</h4>
+#### 🖥️ terminal2:
 ```bash
 ./cp2p 1235 1234
 ```
