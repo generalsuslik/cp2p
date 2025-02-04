@@ -15,7 +15,8 @@ namespace cp2p {
 
 
     Peer::Peer(const uint16_t port)
-            : acceptor_(io_context_, tcp::endpoint(tcp::v4(), port)) {
+            : acceptor_(io_context_, tcp::endpoint(tcp::v4(), port))
+            , resolver_(io_context_) {
         std::tie(public_key_, private_key_) = rsa::generate_rsa_keys();
     }
 
@@ -27,17 +28,17 @@ namespace cp2p {
     }
 
     void Peer::connect(const std::string& host, const uint16_t port) {
-        const auto endpoint = tcp::endpoint(asio::ip::address::from_string(host), port);
+        const auto endpoints = resolver_.resolve(host, std::to_string(port));
         auto socket = std::make_shared<tcp::socket>(io_context_);
 
-        socket->async_connect(endpoint,
-            [this, socket](const boost::system::error_code& ec) {
+        async_connect(*socket, endpoints,
+            [this, socket](const boost::system::error_code& ec, const tcp::endpoint& endpoint) {
                 if (ec) {
                     std::cerr << "[Peer::connect] Connection failed: " << ec.message() << std::endl;
                     return;
                 }
 
-                receive_RSA_key(socket, [this, socket](EVP_PKEY* remote_pub_key) {
+                receive_RSA_key(socket, [this, endpoint, socket](EVP_PKEY* remote_pub_key) {
                     auto [aes_key, aes_iv] = aes::generate_aes_key_iv();
 
                     std::lock_guard lock(connection_keys_mutex_);
@@ -46,8 +47,7 @@ namespace cp2p {
                     send_AES_key(socket, remote_pub_key, aes_key, aes_iv);
 
                     read(socket);
-                    std::cout << "Connected to peer: " << socket->remote_endpoint().address().to_string() << ":"
-                                                << socket->remote_endpoint().port() << std::endl;
+                    std::cout << "[Peer::connect] Connected to peer: " << endpoint << std::endl;
                 });
             });
     }
@@ -82,10 +82,9 @@ namespace cp2p {
             [this, socket](const boost::system::error_code& ec) {
                 if (!ec) {
                     send_RSA_key(socket);
-                    std::cout << "Sent RSA key" << std::endl;
+                    std::cout << "[Peer::accept] Sent RSA key" << std::endl;
                     receive_AES_key(socket, [this, socket] {
-                        std::cout << "Accepted from " << socket->remote_endpoint().address().to_string()
-                                                        << ":" << socket->remote_endpoint().port() << std::endl;
+                        std::cout << "[Peer::accept] Accepted from: " << socket->local_endpoint() << std::endl;
                         read(socket);
                     });
                 }
@@ -208,7 +207,8 @@ namespace cp2p {
             });
     }
 
-    void Peer::receive_RSA_key(const std::shared_ptr<tcp::socket>& socket,  const std::function<void(EVP_PKEY*)>& on_success) {
+    void Peer::receive_RSA_key(const std::shared_ptr<tcp::socket>& socket,
+                               const std::function<void(EVP_PKEY*)>& on_success) {
         auto buffer = std::make_shared<asio::streambuf>();
 
         async_read_until(*socket, *buffer, '\n',

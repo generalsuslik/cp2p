@@ -20,11 +20,14 @@ int main(const int argc, char* argv[]) {
     }
 
     cp2p::Peer peer(listening_port);
-    peer.start();
-    peer.connect("127.0.0.1", target_port);
 
-    peer.set_message_callback([](const std::string& message) {
-       std::cout << "Received: " << message << std::endl;
+    std::thread receive_thread([&peer, target_port] {
+        peer.start();
+        peer.connect("localhost", target_port);
+
+        peer.set_message_callback([](const std::string& message) {
+           std::cout << "Received: " << message << std::endl;
+        });
     });
 
     std::thread send_thread([&peer]{
@@ -38,6 +41,7 @@ int main(const int argc, char* argv[]) {
         }
     });
 
+    receive_thread.join();
     send_thread.join();
 
     return 0;

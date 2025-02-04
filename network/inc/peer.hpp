@@ -23,6 +23,9 @@ namespace cp2p {
     private:
         asio::io_context io_context_;
         tcp::acceptor acceptor_;
+        tcp::resolver resolver_; // for handling human reading domain names (localhost instead of 127.0.0.1)
+
+        // storing < socket_connecting : [ AES_KEY, AES_IV ] >
         std::unordered_map<
             std::shared_ptr<tcp::socket>, std::pair<std::vector<unsigned char>, std::vector<unsigned char>>
         > connection_keys_;
@@ -112,6 +115,13 @@ namespace cp2p {
          */
         void send_RSA_key(const std::shared_ptr<tcp::socket>& socket) const;
 
+        /**
+         * @brief receive remote public RSA key and perform on_success function
+         * with it (encrypt AES key and send it back)
+         *
+         * @param socket to receive remote public key
+         * @param on_success to encrypt AES key and send it back
+         */
         static void receive_RSA_key(const std::shared_ptr<tcp::socket>& socket,
                                     const std::function<void(EVP_PKEY*)>& on_success) ;
     };
