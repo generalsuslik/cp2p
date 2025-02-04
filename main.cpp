@@ -23,14 +23,15 @@ int main(const int argc, char* argv[]) {
 
     std::thread receive_thread([&peer, target_port] {
         peer.start();
-        peer.connect("localhost", target_port);
 
-        peer.set_message_callback([](const std::string& message) {
-           std::cout << "Received: " << message << std::endl;
+        peer.set_message_callback([target_port](const std::string& message) {
+           std::cout << "Received [127.0.0.1:" << target_port << "]: " << message << std::endl;
         });
     });
 
-    std::thread send_thread([&peer]{
+    std::thread send_thread([&peer, target_port]{
+        peer.connect("localhost", target_port);
+
         for (;;) {
             std::string message;
             std::getline(std::cin, message);

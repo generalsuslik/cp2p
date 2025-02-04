@@ -54,7 +54,7 @@ namespace cp2p {
 
     void Peer::send_message(const std::string& message) {
         std::lock_guard lock(connection_keys_mutex_);
-        for (const auto& [socket, aes]: connection_keys_) {
+        for (const auto& [socket, aes] : connection_keys_) {
             const auto& aes_key = aes.first;
             const auto& aes_iv  = aes.second;
 
@@ -84,7 +84,7 @@ namespace cp2p {
                     send_RSA_key(socket);
                     std::cout << "[Peer::accept] Sent RSA key" << std::endl;
                     receive_AES_key(socket, [this, socket] {
-                        std::cout << "[Peer::accept] Accepted from: " << socket->local_endpoint() << std::endl;
+                        std::cout << "[Peer::accept] Accepted from: " << socket->remote_endpoint() << std::endl;
                         read(socket);
                     });
                 }
