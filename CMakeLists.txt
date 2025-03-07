@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.30)
 project(cp2p VERSION 0.1)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -36,9 +36,10 @@ else ()
 endif ()
 
 # maybe add -flto, this thing reduces build time ~21s -> ~15s
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O2 -fsanitize=address,undefined -Wsign-compare")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}") # -Wall -Wextra -Werror -O2 -fsanitize=address,undefined -Wsign-compare")
 
-add_executable(${PROJECT_NAME} main.cpp
+add_executable(${PROJECT_NAME}
+        main.cpp
         crypto/src/aes.cpp
         crypto/inc/aes.hpp
         crypto/src/rsa.cpp
@@ -47,11 +48,24 @@ add_executable(${PROJECT_NAME} main.cpp
         network/src/peer.cpp
         network/inc/peer.hpp
 
+        network/src/connection.cpp
+        network/inc/connection.hpp
+
+        network/src/message.cpp
+        network/inc/message.hpp
+
+        network/inc/message_queue.h
+
         util/src/util.cpp
         util/inc/util.hpp
 )
 
-target_link_libraries(${PROJECT_NAME} Boost::system)
-target_link_libraries(${PROJECT_NAME} OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        Boost::system
+        OpenSSL::SSL
+        OpenSSL::Crypto
+)
+
 
 

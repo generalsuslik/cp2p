@@ -2,48 +2,50 @@
 // Created by generalsuslik on 22.01.25.
 //
 
+#include "network/inc/connection.hpp"
+#include "network/inc/message.hpp"
 #include "network/inc/peer.hpp"
 
-#include <boost/asio.hpp>
-
 #include <iostream>
+#include <cstdint>
 
-namespace asio = boost::asio;
-
+// -------------------------------------------------------------
+// Main function
+// Usage: p2p_chat <local_port> [remote_host remote_port]
+// -------------------------------------------------------------
 int main(const int argc, char* argv[]) {
-    uint16_t listening_port = 9000; // default params
-    uint16_t target_port = 9001;
-
-    if (argc == 3) {
-        listening_port = std::stoi(argv[1]);
-        target_port = std::stoi(argv[2]);
-    }
-
-    cp2p::Peer peer(listening_port);
-
-    std::thread receive_thread([&peer, target_port] {
-        peer.start();
-
-        peer.set_message_callback([target_port](const std::string& message) {
-           std::cout << "Received [127.0.0.1:" << target_port << "]: " << message << std::endl;
-        });
-    });
-
-    std::thread send_thread([&peer, target_port]{
-        peer.connect("localhost", target_port);
-
-        for (;;) {
-            std::string message;
-            std::getline(std::cin, message);
-            if (message == "exit") {
-                break;
-            }
-            peer.send_message(message);
+    try {
+        if (argc < 2) {
+            std::cerr << "Usage: p2p_chat <local_port> [remote_host remote_port]" << std::endl;
+            return 1;
         }
-    });
 
-    receive_thread.join();
-    send_thread.join();
+        boost::asio::io_context io_context;
+
+        cp2p::Peer peer(io_context, std::atoi(argv[1]));
+
+        if (argc == 4) {
+            const std::string remote_host = argv[2];
+            const uint16_t remote_port = std::atoi(argv[3]);
+            peer.connect_to(remote_host, remote_port);
+        }
+
+        std::thread t([&io_context]() { io_context.run(); });
+
+        std::string line;
+        while (std::getline(std::cin, line)) {
+            cp2p::Message msg;
+            msg.set_body_length(line.size());
+            std::memcpy(msg.body(), line.c_str(), msg.body_length());
+            msg.encode_header();
+            peer.broadcast(msg);
+        }
+
+        io_context.stop();
+        t.join();
+    } catch (std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
 
     return 0;
 }
