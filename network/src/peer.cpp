@@ -20,7 +20,7 @@ namespace cp2p {
 
         auto new_conn = std::make_shared<Connection>(io_context_);
         async_connect(new_conn->socket(), endpoints,
-            [this, new_conn](const boost::system::error_code& ec, tcp::endpoint) {
+            [this, new_conn](const boost::system::error_code& ec, const tcp::endpoint&) {
                 if (ec) {
                     std::cerr << "[Peer::connect_to] " << ec.message() << "\n";
                     return;
@@ -59,7 +59,6 @@ namespace cp2p {
                 accept();
             });
     }
-
 
 
 } // cp2p

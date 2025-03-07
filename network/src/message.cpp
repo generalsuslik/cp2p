@@ -49,7 +49,7 @@ namespace cp2p {
     bool Message::decode_header() {
         char header[header_length + 1] = "";
         std::memcpy(header, data_, header_length);
-        body_length_ = std::atoi(header);
+        body_length_ = std::strtol(header, nullptr, 10);
         if (body_length_ > max_body_length) {
             body_length_ = 0;
             return false;

@@ -22,11 +22,11 @@ int main(const int argc, char* argv[]) {
 
         boost::asio::io_context io_context;
 
-        cp2p::Peer peer(io_context, std::atoi(argv[1]));
+        cp2p::Peer peer(io_context, std::strtol(argv[1], nullptr, 10));
 
         if (argc == 4) {
             const std::string remote_host = argv[2];
-            const uint16_t remote_port = std::atoi(argv[3]);
+            const uint16_t remote_port = std::strtol(argv[3], nullptr, 10);
             peer.connect_to(remote_host, remote_port);
         }
 

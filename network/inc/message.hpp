@@ -20,18 +20,23 @@ namespace cp2p {
 
         Message();
 
+        [[nodiscard]]
         const char* data() const;
 
         char* data();
 
+        [[nodiscard]]
         std::size_t length() const;
 
+        [[nodiscard]]
         std::size_t size() const;
 
+        [[nodiscard]]
         const char* body() const;
 
         char* body();
 
+        [[nodiscard]]
         std::size_t body_length() const;
 
         void set_body_length(std::size_t length);
