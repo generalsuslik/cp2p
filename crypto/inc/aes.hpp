@@ -23,7 +23,7 @@ namespace cp2p::aes {
     std::pair<std::vector<unsigned char>, std::vector<unsigned char>> generate_aes_key_iv();
 
     /**
-     * Encrypts the given plaintext using AES-256-CBC.
+     * Encrypts given plaintext using AES-256-CBC.
      *
      * @param plaintext The text to encrypt.
      * @param key A 32-byte (256-bit) key.
@@ -37,7 +37,7 @@ namespace cp2p::aes {
                                            const std::vector<unsigned char>& iv);
 
     /**
-     * Decrypts the given ciphertext using AES-256-CBC.
+     * Decrypts given ciphertext using AES-256-CBC.
      *
      * @param ciphertext A vector of unsigned char containing the ciphertext.
      * @param key A 32-byte (256-bit) key.

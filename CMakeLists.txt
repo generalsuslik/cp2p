@@ -56,6 +56,7 @@ add_executable(${PROJECT_NAME}
         network/inc/message_queue.h
         
         util/inc/util.hpp
+        test/main.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -75,8 +76,16 @@ add_executable(tests
         crypto/src/rsa.cpp
         crypto/inc/rsa.hpp
 
+        crypto/src/aes.cpp
+        crypto/inc/aes.hpp
+
         util/inc/util.hpp
+
         test/crypto/test_rsa.cpp
+        test/crypto/test_aes.cpp
+        test/crypto/test_aes_rsa_integrity.cpp
+        test/test_util/test_util.cpp
+        test/test_util/test_util.hpp
 )
 target_link_libraries(tests GTest::GTest GTest::Main OpenSSL::SSL OpenSSL::Crypto)
 

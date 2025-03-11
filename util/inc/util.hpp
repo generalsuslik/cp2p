@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-template <typename input_iter>
-std::string to_hex(input_iter begin, input_iter end) {
+template <typename InputIter>
+std::string to_hex(InputIter begin, InputIter end) {
     std::ostringstream oss;
     for (auto it = begin; it != end; ++it) {
         oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(*it);
@@ -20,8 +20,8 @@ std::string to_hex(input_iter begin, input_iter end) {
     return oss.str();
 }
 
-template <typename rand_access_iter>
-std::vector<unsigned char> from_hex(rand_access_iter begin, rand_access_iter end) {
+template <typename RandomAccessIter>
+std::vector<unsigned char> from_hex(RandomAccessIter begin, RandomAccessIter end) {
     const std::size_t len = std::distance(begin, end);
     if (len % 2 == 1) {
         throw std::runtime_error("Invalid hex string length");
