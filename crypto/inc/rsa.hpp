@@ -30,9 +30,13 @@ namespace cp2p::rsa {
 
     std::vector<unsigned char> rsa_decrypt(EVP_PKEY* private_key, const std::vector<unsigned char>& ciphertext);
 
-    EVP_PKEY* get_public_key(const std::string& str);
+    EVP_PKEY* to_public_key(const std::string& str);
 
-    EVP_PKEY* get_private_key(const std::string& str);
+    EVP_PKEY* to_private_key(const std::string& str);
+
+    std::string to_public_string(const EVP_PKEY* public_key);
+
+    std::string to_private_string(const EVP_PKEY* private_key);
 
 
 } // cp2p::rsa

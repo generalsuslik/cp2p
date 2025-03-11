@@ -44,7 +44,7 @@ namespace cp2p::rsa {
         }
 
         if (PEM_write_bio_PUBKEY(bio_public, rsa_key) != 1) {
-            BIO_free_all(bio_public);
+            BIO_free(bio_public);
             BIO_free(bio_private);
             EVP_PKEY_free(rsa_key);
             throw std::runtime_error("Failed to write public key to BIO");
@@ -164,7 +164,7 @@ namespace cp2p::rsa {
         return decrypted;
     }
 
-    EVP_PKEY* get_public_key(const std::string& str) {
+    EVP_PKEY* to_public_key(const std::string& str) {
         BIO* bio = BIO_new_mem_buf(str.c_str(), static_cast<int>(str.size()));
         if (!bio) {
             throw std::runtime_error("Failed to create BIO for public key: "
@@ -182,7 +182,7 @@ namespace cp2p::rsa {
         return public_key;
     }
 
-    EVP_PKEY* get_private_key(const std::string& str) {
+    EVP_PKEY* to_private_key(const std::string& str) {
         BIO* bio = BIO_new_mem_buf(str.c_str(), static_cast<int>(str.size()));
         if (!bio) {
             throw std::runtime_error("Failed to create BIO for private key: "
@@ -198,6 +198,50 @@ namespace cp2p::rsa {
         }
 
         return pkey;
+    }
+
+    std::string to_public_string(const EVP_PKEY* public_key) {
+        BIO* bio = BIO_new(BIO_s_mem());
+        if (!bio) {
+            throw std::runtime_error("[rsa::to_public_string] Failed to create BIO for public key");
+        }
+
+        if (PEM_write_bio_PUBKEY(bio, public_key) != 1) {
+            BIO_free(bio);
+            throw std::runtime_error("[rsa::to_public_string] Failed to write public key to BIO");
+        }
+
+        BIO_flush(bio);
+        BUF_MEM* buf;
+        BIO_get_mem_ptr(bio, &buf);
+
+        std::string key(buf->data, buf->length);
+
+        BIO_free(bio);
+
+        return key;
+    }
+
+    std::string to_private_string(const EVP_PKEY* private_key) {
+        BIO* bio = BIO_new(BIO_s_mem());
+        if (!bio) {
+            throw std::runtime_error("[rsa::to_private_string] Failed to create BIO for private key");
+        }
+
+        if (PEM_write_bio_PrivateKey(bio, private_key, nullptr, nullptr, 0, nullptr, nullptr) != 1) {
+            BIO_free(bio);
+            throw std::runtime_error("[rsa::to_private_string] Failed to write private key to BIO");
+        }
+
+        BIO_flush(bio);
+        BUF_MEM* buf;
+        BIO_get_mem_ptr(bio, &buf);
+
+        std::string key(buf->data, buf->length);
+
+        BIO_free(bio);
+
+        return key;
     }
 
 
