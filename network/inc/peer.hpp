@@ -9,7 +9,6 @@
 
 #include <boost/asio.hpp>
 
-
 namespace cp2p {
 
     namespace asio = boost::asio;
@@ -23,13 +22,20 @@ namespace cp2p {
 
         void broadcast(const Message& message);
 
+        void send_message(const std::string& id, const Message& message);
+
     private:
         void accept();
 
         asio::io_context& io_context_;
         tcp::acceptor acceptor_;
-        std::vector<std::shared_ptr<Connection>> connections_;
+
+        std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "host:port" : conn
         std::mutex mutex_;
+
+        std::string id_;
+        std::string rsa_public_key_;
+        std::string rsa_private_key_;
     };
 
 

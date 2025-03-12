@@ -30,25 +30,45 @@ int main(const int argc, char* argv[]) {
             peer.connect_to(remote_host, remote_port);
         }
 
-        std::thread t([&io_context]() { io_context.run(); });
+        std::thread io_thread([&io_context] {
+            io_context.run();
+        });
 
         std::string line;
-        while (std::getline(std::cin, line)) {
+        while (true) {
+            std::cout << "> ";
+            std::getline(std::cin, line);
             cp2p::Message msg;
-            msg.set_body_length(line.size());
-            std::memcpy(msg.body(), line.c_str(), msg.body_length());
-            msg.encode_header();
-            peer.broadcast(msg);
+            if (line.starts_with("send ")) {
+                std::istringstream iss(line);
+                std::string command, host, port, message;
+                iss >> command >> host >> port >> message;
+
+                iss.clear();
+
+                std::cout << "Entered: " << host << ":" << port << " " << message << std::endl;
+
+                msg.set_body_length(message.size());
+                std::memcpy(msg.body(), message.c_str(), msg.body_length());
+                msg.encode_header();
+                peer.send_message(host + ":" + port, msg);
+            } else if (line == "exit") {
+                break;
+            } else {
+                msg.set_body_length(line.size());
+                std::memcpy(msg.body(), line.c_str(), msg.body_length());
+                msg.encode_header();
+                peer.broadcast(msg);
+            }
         }
 
         io_context.stop();
-        t.join();
+        io_thread.join();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
 
     return 0;
 }
-
 
 

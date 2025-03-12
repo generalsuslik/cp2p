@@ -9,7 +9,7 @@
 namespace cp2p {
 
 
-    Connection::Connection(asio::io_context &io_context)
+    Connection::Connection(asio::io_context& io_context)
         : socket_(io_context) {}
 
     tcp::socket& Connection::socket() {
@@ -36,7 +36,7 @@ namespace cp2p {
             asio::buffer(message_queue_.front()->data(), message_queue_.front()->length()),
             [this](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
-                    std::cerr << "[Connection::send_message] " << ec.message() << "\n";
+                    std::cerr << "[Connection::send_message] " << ec.message() << std::endl;
                     socket_.close();
                     return;
                 }
@@ -55,7 +55,7 @@ namespace cp2p {
             asio::buffer(msg->data(), Message::header_length),
             [this, msg](const boost::system::error_code& ec, std::size_t) {
                 if (ec || !msg->decode_header()) {
-                    std::cerr << "[Connection::read_header] " << ec.message() << "\n";
+                    std::cerr << "[Connection::read_header] " << ec.message() << std::endl;
                     socket_.close();
                     return;
                 }
@@ -69,7 +69,7 @@ namespace cp2p {
             asio::buffer(msg->body(), msg->body_length()),
             [this, msg](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
-                    std::cerr << "[Connection::read_body] " << ec.message() << "\n";
+                    std::cerr << "[Connection::read_body] " << ec.message() << std::endl;
                     socket_.close();
                     return;
                 }

@@ -56,7 +56,6 @@ add_executable(${PROJECT_NAME}
         network/inc/message_queue.h
         
         util/inc/util.hpp
-        test/main.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
