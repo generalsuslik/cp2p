@@ -38,19 +38,19 @@ namespace cp2p {
 
         auto new_conn = std::make_shared<Connection>(io_context_);
         if (!new_conn->socket().is_open()) {
-            std::cerr << "[Peer::connect_to] Error: Socket not open" << std::endl;
+            // std::cerr << "[Peer::connect_to] Error: Socket not opened" << std::endl;
             new_conn->socket().open(tcp::v4());
-            std::cout << "Opened socket" << std::endl;
+            std::cout << "[Peer::connect_to] Opened socket" << std::endl;
         }
 
         async_connect(new_conn->socket(), endpoints,
-            [this, new_conn](const boost::system::error_code& ec, const tcp::endpoint&) {
+            [this, new_conn, host, port](const boost::system::error_code& ec, const tcp::endpoint&) {
                 if (ec) {
                     std::cerr << "[Peer::connect_to] " << ec.message() << std::endl;
                     return;
                 }
 
-                const std::string id = new_conn->socket().remote_endpoint().address().to_string() + ":" + std::to_string(new_conn->socket().remote_endpoint().port());
+                const std::string id = host + ":" + std::to_string(port);
 
                 const Message handshake(id_, MessageType::HANDSHAKE);
 

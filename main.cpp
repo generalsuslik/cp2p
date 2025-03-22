@@ -44,13 +44,13 @@ int main(const int argc, char* argv[]) {
             if (line.starts_with("send ")) {
                 std::istringstream iss(line);
                 std::string command, host, port, message;
-                iss >> command >> host >> port >> message;
+                iss >> command >> host >> port;
+
+                std::getline(iss >> std::ws, message);
 
                 iss.clear();
 
-                std::cout << "Entered: " << host << ":" << port << " " << message << std::endl;
-
-                cp2p::Message msg(line);
+                cp2p::Message msg(message);
                 peer.send_message(host + ":" + port, msg);
             } else if (line.starts_with("connect ")) {
                 std::istringstream iss(line);
