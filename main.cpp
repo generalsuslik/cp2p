@@ -11,12 +11,14 @@
 
 // -------------------------------------------------------------
 // Main function
-// Usage: p2p_chat <local_port> [remote_host remote_port]
+// Usage: p2p_chat <local_port>
 // -------------------------------------------------------------
 int main(const int argc, char* argv[]) {
     try {
+        std::string host_;
         std::string port_;
         if (argc < 2) {
+            host_ = "0.0.0.0";
             port_ = "9000";
         } else {
             port_ = argv[1];
@@ -24,17 +26,16 @@ int main(const int argc, char* argv[]) {
 
         boost::asio::io_context io_context;
 
-        cp2p::Peer peer(io_context, std::atoi(port_.c_str()));
+        if (argc >= 3) {
+            host_ = argv[1];
+            port_ = argv[2];
+        }
+
+       cp2p::Peer peer(io_context, host_, std::atoi(port_.c_str()));
 
         std::thread io_thread([&io_context] {
             io_context.run();
         });
-
-        if (argc == 4) {
-            const std::string remote_host = argv[2];
-            const uint16_t remote_port = std::strtol(argv[3], nullptr, 10);
-            peer.connect_to(remote_host, remote_port);
-        }
 
         std::string line;
         while (true) {
@@ -51,6 +52,14 @@ int main(const int argc, char* argv[]) {
 
                 cp2p::Message msg(line);
                 peer.send_message(host + ":" + port, msg);
+            } else if (line.starts_with("connect ")) {
+                std::istringstream iss(line);
+                std::string command, host;
+                uint16_t port;
+                iss >> command >> host >> port;
+
+                peer.connect_to(host, port);
+
             } else if (line == "exit") {
                 break;
             } else if (line == "lc") {

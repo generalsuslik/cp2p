@@ -16,7 +16,7 @@ namespace cp2p {
 
     class Peer {
     public:
-        Peer(asio::io_context& io_context, uint16_t port);
+        Peer(asio::io_context& io_context, const std::string& host, uint16_t port);
 
         void connect_to(const std::string& host, uint16_t port);
 
@@ -28,6 +28,8 @@ namespace cp2p {
 
     private:
         void accept();
+
+        std::string get_ip() const;
 
         asio::io_context& io_context_;
         tcp::acceptor acceptor_;

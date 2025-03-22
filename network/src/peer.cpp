@@ -11,13 +11,21 @@
 namespace cp2p {
 
 
-    Peer::Peer(asio::io_context& io_context, const uint16_t port)
+    Peer::Peer(asio::io_context& io_context, const std::string& host, const uint16_t port)
             : io_context_(io_context)
-            , acceptor_(io_context_, tcp::endpoint(tcp::v4(), port)) {
+            , acceptor_(io_context_) {
         std::tie(rsa_public_key_, rsa_private_key_) = rsa::generate_rsa_keys();
 
-        const tcp::endpoint local_endpoint = acceptor_.local_endpoint();
-        id_ = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+        const tcp::endpoint ep(asio::ip::make_address(host), port);
+        boost::system::error_code ec;
+        acceptor_.open(ep.protocol());
+        acceptor_.bind(ep, ec);
+        if (ec) {
+            std::cerr << ec.message() << std::endl;
+        }
+        acceptor_.listen();
+
+        id_ = host + ":" + std::to_string(port);
 
         std::cout << "id_: " << id_ << std::endl;
 
@@ -109,6 +117,25 @@ namespace cp2p {
                 accept();
             });
     }
+
+    std::string Peer::get_ip() const {
+        try {
+            tcp::resolver resolver(io_context_);
+            const tcp::resolver::results_type endpoints = resolver.resolve(asio::ip::host_name(), "");
+
+            for (const auto& ep : endpoints) {
+                const auto addr = ep.endpoint().address();
+                if (addr.is_v4() && addr.to_string().find("127.") != 0 && addr.to_string() != "0.0.0.0") {
+                    return addr.to_string();
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[Peer::get_ip] " << e.what() << std::endl;
+        }
+
+        return "0.0.0.0";
+    }
+
 
 
 } // cp2p
