@@ -38,7 +38,6 @@ namespace cp2p {
 
         auto new_conn = std::make_shared<Connection>(io_context_);
         if (!new_conn->socket().is_open()) {
-            // std::cerr << "[Peer::connect_to] Error: Socket not opened" << std::endl;
             new_conn->socket().open(tcp::v4());
             std::cout << "[Peer::connect_to] Opened socket" << std::endl;
         }
