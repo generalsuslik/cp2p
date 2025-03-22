@@ -5,7 +5,6 @@
 #include "../inc/peer.hpp"
 
 #include "../../crypto/inc/rsa.hpp"
-#include "../../util/inc/util.hpp"
 
 #include <iostream>
 
@@ -16,7 +15,11 @@ namespace cp2p {
             : io_context_(io_context)
             , acceptor_(io_context_, tcp::endpoint(tcp::v4(), port)) {
         std::tie(rsa_public_key_, rsa_private_key_) = rsa::generate_rsa_keys();
-        id_ = to_hex(rsa_public_key_.begin(), rsa_public_key_.end());
+
+        const tcp::endpoint local_endpoint = acceptor_.local_endpoint();
+        id_ = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+
+        std::cout << "id_: " << id_ << std::endl;
 
         accept();
     }
@@ -33,13 +36,18 @@ namespace cp2p {
         }
 
         async_connect(new_conn->socket(), endpoints,
-            [this, new_conn, host, port](const boost::system::error_code& ec, const tcp::endpoint&) {
+            [this, new_conn](const boost::system::error_code& ec, const tcp::endpoint&) {
                 if (ec) {
                     std::cerr << "[Peer::connect_to] " << ec.message() << std::endl;
                     return;
                 }
 
-                const std::string id = host + ":" + std::to_string(port);
+                const std::string id = new_conn->socket().remote_endpoint().address().to_string() + ":" + std::to_string(new_conn->socket().remote_endpoint().port());
+
+                const Message handshake(id_, MessageType::HANDSHAKE);
+
+                new_conn->set_remote_id(id);
+                new_conn->deliver(handshake);
 
                 {
                     std::lock_guard lock(mutex_);
@@ -70,21 +78,32 @@ namespace cp2p {
         it->second->deliver(message);
     }
 
+    std::vector<std::shared_ptr<Connection>> Peer::get_connections() {
+        std::vector<std::shared_ptr<Connection>> res;
+        for (const auto& [_, conn] : connections_) {
+            res.push_back(conn);
+        }
+
+        return res;
+    }
+
     void Peer::accept() {
         auto new_conn = std::make_shared<Connection>(io_context_);
 
         acceptor_.async_accept(new_conn->socket(),
             [this, new_conn](const boost::system::error_code& ec) {
                 if (!ec) {
-                    const std::string id = new_conn->socket().remote_endpoint().address().to_string() + ":" + std::to_string(new_conn->socket().remote_endpoint().port());
+                    new_conn->accept([this, new_conn](const std::shared_ptr<Message>& msg){
+                        new_conn->set_remote_id(msg->body());
 
-                    {
-                        std::lock_guard lock(mutex_);
-                        connections_[id] = new_conn;
-                    }
+                        {
+                            std::lock_guard lock(mutex_);
+                            connections_[new_conn->get_remote_id()] = new_conn;
+                        }
 
-                    std::cout << "[Peer::accept] Accepted from: " << id << std::endl;
-                    new_conn->start();
+                        std::cout << "[Peer::accept] Accepted from: " << new_conn->get_remote_id() << std::endl;
+                        new_conn->start();
+                    });
                 }
 
                 accept();

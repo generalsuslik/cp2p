@@ -15,14 +15,20 @@
 // -------------------------------------------------------------
 int main(const int argc, char* argv[]) {
     try {
+        std::string port_;
         if (argc < 2) {
-            std::cerr << "Usage: p2p_chat <local_port> [remote_host remote_port]" << std::endl;
-            return 1;
+            port_ = "9000";
+        } else {
+            port_ = argv[1];
         }
 
         boost::asio::io_context io_context;
 
-        cp2p::Peer peer(io_context, std::strtol(argv[1], nullptr, 10));
+        cp2p::Peer peer(io_context, std::atoi(port_.c_str()));
+
+        std::thread io_thread([&io_context] {
+            io_context.run();
+        });
 
         if (argc == 4) {
             const std::string remote_host = argv[2];
@@ -30,15 +36,10 @@ int main(const int argc, char* argv[]) {
             peer.connect_to(remote_host, remote_port);
         }
 
-        std::thread io_thread([&io_context] {
-            io_context.run();
-        });
-
         std::string line;
         while (true) {
             std::cout << "> ";
             std::getline(std::cin, line);
-            cp2p::Message msg;
             if (line.starts_with("send ")) {
                 std::istringstream iss(line);
                 std::string command, host, port, message;
@@ -48,16 +49,17 @@ int main(const int argc, char* argv[]) {
 
                 std::cout << "Entered: " << host << ":" << port << " " << message << std::endl;
 
-                msg.set_body_length(message.size());
-                std::memcpy(msg.body(), message.c_str(), msg.body_length());
-                msg.encode_header();
+                cp2p::Message msg(line);
                 peer.send_message(host + ":" + port, msg);
             } else if (line == "exit") {
                 break;
+            } else if (line == "lc") {
+                auto conns = peer.get_connections();
+                for (const auto& conn : conns) {
+                    std::cout << conn->get_remote_id() << std::endl;
+                }
             } else {
-                msg.set_body_length(line.size());
-                std::memcpy(msg.body(), line.c_str(), msg.body_length());
-                msg.encode_header();
+                cp2p::Message msg(line);
                 peer.broadcast(msg);
             }
         }

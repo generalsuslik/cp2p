@@ -21,7 +21,6 @@ TEST(AES_RSA, aes_rsa_integrity) {
 
     // Serializing AES for the encryption
     std::vector<unsigned char> aes;
-    aes.reserve(aes_key.size() + 1 + aes_iv.size() + 1);
     for (const auto ch : aes_key) {
         aes.push_back(ch);
     }
@@ -29,7 +28,6 @@ TEST(AES_RSA, aes_rsa_integrity) {
     for (const auto ch : aes_iv) {
         aes.push_back(ch);
     }
-    aes.push_back('\n');
 
     // Encrypting AES
     const std::vector<unsigned char> encrypted_aes = rsa::rsa_encrypt(rsa::to_public_key(public_rsa), aes);
@@ -42,10 +40,7 @@ TEST(AES_RSA, aes_rsa_integrity) {
     // Deserializing AES for the decryption
     const auto it = std::ranges::find(decrypted_aes, ' ');
     const std::vector<unsigned char> encrypted_aes_key(decrypted_aes.begin(), it);
-    std::vector<unsigned char> decrypted_aes_iv(it + 1, decrypted_aes.end());
-    if (*decrypted_aes_iv.end() == '\n') {
-        decrypted_aes_iv.pop_back();
-    }
+    const std::vector<unsigned char> decrypted_aes_iv(it + 1, decrypted_aes.end());
 
     const std::string decrypted_text = aes::aes_decrypt(ciphertext, encrypted_aes_key, decrypted_aes_iv);
 

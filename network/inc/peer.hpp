@@ -24,6 +24,8 @@ namespace cp2p {
 
         void send_message(const std::string& id, const Message& message);
 
+        std::vector<std::shared_ptr<Connection>> get_connections();
+
     private:
         void accept();
 

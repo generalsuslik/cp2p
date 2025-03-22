@@ -78,6 +78,9 @@ add_executable(tests
         crypto/src/aes.cpp
         crypto/inc/aes.hpp
 
+        network/src/message.cpp
+        network/inc/message.hpp
+
         util/inc/util.hpp
 
         test/crypto/test_rsa.cpp
@@ -85,6 +88,7 @@ add_executable(tests
         test/crypto/test_aes_rsa_integrity.cpp
         test/test_util/test_util.cpp
         test/test_util/test_util.hpp
+        test/network/test_message.cpp
 )
 target_link_libraries(tests GTest::GTest GTest::Main OpenSSL::SSL OpenSSL::Crypto)
 
