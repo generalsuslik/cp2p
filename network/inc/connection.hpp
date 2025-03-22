@@ -21,6 +21,8 @@ namespace cp2p {
     public:
         explicit Connection(asio::io_context& io_context);
 
+        ~Connection();
+
         tcp::socket& socket();
 
         void start();

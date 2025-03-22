@@ -13,6 +13,10 @@ namespace cp2p {
         : socket_(io_context)
         , initialized_(false) {}
 
+    Connection::~Connection() {
+        close();
+    }
+
     tcp::socket& Connection::socket() {
         return socket_;
     }
@@ -28,7 +32,6 @@ namespace cp2p {
     void Connection::close() {
         post(socket_.get_executor(), [this]{
             socket_.close();
-            socket_.release();
         });
     }
 
@@ -52,9 +55,11 @@ namespace cp2p {
     }
 
     void Connection::send_message() {
+        auto self = shared_from_this();
+
         async_write(socket_,
             asio::buffer(message_queue_.front()->data(), message_queue_.front()->length()),
-            [this](const boost::system::error_code& ec, std::size_t) {
+            [this, self](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
                     std::cerr << "[Connection::send_message] " << ec.message() << std::endl;
                     std::cout << "Disconnected from: " << remote_id_ << std::endl;
@@ -70,16 +75,19 @@ namespace cp2p {
     }
 
     void Connection::read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        auto self = shared_from_this();
         auto msg = std::make_shared<Message>();
 
         async_read(socket_,
             asio::buffer(msg->data(), Message::HEADER_LENGTH),
-            [this, msg, on_success](const boost::system::error_code& ec, std::size_t) {
+            [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (ec || !msg->decode_header()) {
                     if (ec == asio::error::eof) {
                         std::cout << "Disconnected from: " << remote_id_ << std::endl;
                         close();
+                        return;
                     }
+
                     std::cerr << "[Connection::read_header] " << ec.message() << std::endl;
                     close();
                     return;
@@ -90,9 +98,11 @@ namespace cp2p {
     }
 
     void Connection::read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        auto self = shared_from_this();
+
         async_read(socket_,
             asio::buffer(msg->body(), msg->body_length()),
-            [this, msg, on_success](const boost::system::error_code& ec, std::size_t) {
+            [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
                     std::cerr << "[Connection::read_body] " << ec.message() << std::endl;
                     std::cout << "Disconnected from: " << remote_id_ << std::endl;
