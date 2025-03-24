@@ -8,6 +8,8 @@
 
 #include <iostream>
 
+#include "../../util/inc/util.hpp"
+
 namespace cp2p {
 
 
@@ -17,15 +19,16 @@ namespace cp2p {
         std::tie(rsa_public_key_, rsa_private_key_) = rsa::generate_rsa_keys();
 
         const tcp::endpoint ep(asio::ip::make_address(host), port);
-        boost::system::error_code ec;
         acceptor_.open(ep.protocol());
-        acceptor_.bind(ep, ec);
+
+        boost::system::error_code ec;
+        ec = acceptor_.bind(ep, ec);
         if (ec) {
             std::cerr << ec.message() << std::endl;
         }
         acceptor_.listen();
 
-        id_ = host + ":" + std::to_string(port);
+        id_ = std::to_string(std::hash<std::string>{}(to_hex(rsa_public_key_.begin(), rsa_public_key_.end())));
 
         std::cout << "id_: " << id_ << std::endl;
 
@@ -43,26 +46,28 @@ namespace cp2p {
         }
 
         async_connect(new_conn->socket(), endpoints,
-            [this, new_conn, host, port](const boost::system::error_code& ec, const tcp::endpoint&) {
+            [this, new_conn](const boost::system::error_code& ec, const tcp::endpoint&) {
                 if (ec) {
-                    std::cerr << "[Peer::connect_to] " << ec.message() << std::endl;
+                    std::cerr << "[Peer::connect_to] error: " << ec.message() << std::endl;
                     return;
                 }
 
-                const std::string id = host + ":" + std::to_string(port);
-
                 const Message handshake(id_, MessageType::HANDSHAKE);
 
-                new_conn->set_remote_id(id);
-                new_conn->deliver(handshake);
+                new_conn->connect(handshake, [this, new_conn](const std::shared_ptr<Message>& msg) {
+                    const std::string id = msg->body();
+                    std::cout << "id: " << id << std::endl;
 
-                {
-                    std::lock_guard lock(mutex_);
-                    connections_[id] = new_conn;
-                }
+                    new_conn->set_remote_id(id);
 
-                std::cout << "[Peer::accept] Connected to: " << id << std::endl;
-                new_conn->start();
+                    {
+                        std::unique_lock lock(mutex_);
+                        connections_[id] = new_conn;
+                    }
+
+                    new_conn->start();
+                    std::cout << "Started" << std::endl;
+                });
             });
     }
 
@@ -110,6 +115,9 @@ namespace cp2p {
 
                         std::cout << "[Peer::accept] Accepted from: " << new_conn->get_remote_id() << std::endl;
                         new_conn->start();
+
+                        const Message approve(id_, MessageType::APPROVE);
+                        new_conn->deliver(approve);
                     });
                 }
 

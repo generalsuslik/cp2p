@@ -18,9 +18,10 @@ int main(const int argc, char* argv[]) {
         std::string host_;
         std::string port_;
         if (argc < 2) {
-            host_ = "0.0.0.0";
+            host_ = "127.0.0.1";
             port_ = "9000";
         } else {
+            host_ = "127.0.0.1";
             port_ = argv[1];
         }
 
@@ -43,15 +44,15 @@ int main(const int argc, char* argv[]) {
             std::getline(std::cin, line);
             if (line.starts_with("send ")) {
                 std::istringstream iss(line);
-                std::string command, host, port, message;
-                iss >> command >> host >> port;
+                std::string command, id, message;
+                iss >> command >> id;
 
                 std::getline(iss >> std::ws, message);
 
                 iss.clear();
 
                 cp2p::Message msg(message);
-                peer.send_message(host + ":" + port, msg);
+                peer.send_message(id, msg);
             } else if (line.starts_with("connect ")) {
                 std::istringstream iss(line);
                 std::string command, host;

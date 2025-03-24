@@ -13,6 +13,7 @@ namespace cp2p {
 
     enum class MessageType : uint32_t {
         HANDSHAKE,
+        APPROVE,
         TEXT,
         FILE, // yet not supported
     };
@@ -26,7 +27,7 @@ namespace cp2p {
 
         enum : uint32_t {
             HEADER_LENGTH = sizeof(message_header),
-            MAX_BODY_LENGTH = 512,
+            MAX_BODY_LENGTH = 1024,
         };
 
         Message();

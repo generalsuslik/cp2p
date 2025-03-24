@@ -34,7 +34,7 @@ namespace cp2p {
         asio::io_context& io_context_;
         tcp::acceptor acceptor_;
 
-        std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "host:port" : conn
+        std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "public key hash" : conn
         std::mutex mutex_;
 
         std::string id_;

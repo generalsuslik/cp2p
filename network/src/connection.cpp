@@ -29,6 +29,11 @@ namespace cp2p {
         read_header(on_success);
     }
 
+    void Connection::connect(const Message& handshake, const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        deliver(handshake);
+        accept(on_success);
+    }
+
     void Connection::close() {
         post(socket_.get_executor(), [this]{
             socket_.close();

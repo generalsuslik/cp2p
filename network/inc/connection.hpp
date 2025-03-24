@@ -29,6 +29,8 @@ namespace cp2p {
 
         void accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
+        void connect(const Message& handshake, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
+
         void close();
 
         std::string get_remote_id() const;
