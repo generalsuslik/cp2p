@@ -16,7 +16,7 @@ namespace cp2p {
 
     class Node {
     public:
-        Node(asio::io_context& io_context, const std::string& host, uint16_t port, bool is_hub);
+        Node(asio::io_context& io_context, const std::string& host, uint16_t port, bool is_hub = false);
 
         void connect_to(const std::string& host, uint16_t port);
 

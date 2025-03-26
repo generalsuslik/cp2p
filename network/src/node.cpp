@@ -14,10 +14,10 @@
 namespace cp2p {
 
 
-    Node::Node(asio::io_context& io_context, const std::string& host, const uint16_t port, bool is_hub = false)
+    Node::Node(asio::io_context& io_context, const std::string& host, const uint16_t port, const bool is_hub)
             : io_context_(io_context)
             , acceptor_(io_context_)
-            , is_hub_(is_hub_)
+            , is_hub_(is_hub)
             , host_(host)
             , port_(port) {
         std::tie(rsa_public_key_, rsa_private_key_) = rsa::generate_rsa_keys();
