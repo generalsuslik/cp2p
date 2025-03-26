@@ -31,7 +31,7 @@ TEST(TestMessage, test_serialization_deserialization) {
     const std::size_t message_size = message.size();
     const MessageType message_type = message.type();
 
-    message.deserialize();
+    message.decode_header();
 
     assert(message.body() == message_body);
     assert(message.length() == message_length);

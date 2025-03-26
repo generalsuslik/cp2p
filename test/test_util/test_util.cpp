@@ -7,20 +7,21 @@
 #include <algorithm>
 
 std::string random_string(const std::size_t len) {
-    constexpr char alphanum[] =
+    const std::string alphanum =
         "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz";
 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, static_cast<int>(alphanum.size()) - 1);
+
     std::string res;
-    res.resize(len);
+    res.reserve(len);
 
-    std::default_random_engine generator(std::random_device{}());
-    std::uniform_int_distribution<> distribution(0, sizeof(alphanum) - 1);
-
-    std::generate_n(res.begin(), len, [&alphanum, &distribution, &generator]{
-        return alphanum[distribution(generator)];
-    });
+    for (size_t i = 0; i < len; ++i) {
+        res += alphanum[distrib(gen)];
+    }
 
     return res;
 }

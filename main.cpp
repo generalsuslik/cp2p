@@ -4,7 +4,7 @@
 
 #include "network/inc/connection.hpp"
 #include "network/inc/message.hpp"
-#include "network/inc/peer.hpp"
+#include "network/inc/node.hpp"
 
 #include <iostream>
 #include <cstdint>
@@ -32,7 +32,7 @@ int main(const int argc, char* argv[]) {
             port_ = argv[2];
         }
 
-       cp2p::Peer peer(io_context, host_, std::atoi(port_.c_str()));
+       cp2p::Node peer(io_context, host_, std::atoi(port_.c_str()));
 
         std::thread io_thread([&io_context] {
             io_context.run();

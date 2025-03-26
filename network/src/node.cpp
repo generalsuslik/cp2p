@@ -2,20 +2,24 @@
 // Created by generalsuslik on 22.01.25.
 //
 
-#include "../inc/peer.hpp"
+#include "../inc/node.hpp"
 
+#include "../../crypto/inc/common.hpp"
 #include "../../crypto/inc/rsa.hpp"
 
-#include <iostream>
+#include <spdlog/spdlog.h>
 
-#include "../../util/inc/util.hpp"
+#include <iostream>
 
 namespace cp2p {
 
 
-    Peer::Peer(asio::io_context& io_context, const std::string& host, const uint16_t port)
+    Node::Node(asio::io_context& io_context, const std::string& host, const uint16_t port, bool is_hub = false)
             : io_context_(io_context)
-            , acceptor_(io_context_) {
+            , acceptor_(io_context_)
+            , is_hub_(is_hub_)
+            , host_(host)
+            , port_(port) {
         std::tie(rsa_public_key_, rsa_private_key_) = rsa::generate_rsa_keys();
 
         const tcp::endpoint ep(asio::ip::make_address(host), port);
@@ -28,27 +32,32 @@ namespace cp2p {
         }
         acceptor_.listen();
 
-        id_ = std::to_string(std::hash<std::string>{}(to_hex(rsa_public_key_.begin(), rsa_public_key_.end())));
+        id_ = host + ":" + std::to_string(port);
+        
+        spdlog::info("Initialized with id: {}", id_);
 
-        std::cout << "id_: " << id_ << std::endl;
+        if (is_hub_) {
+            inform_server("127.0.0.1", 8080);
+            spdlog::info("Hub initialized; Sent id to remote server");
+        }
 
         accept();
     }
 
-    void Peer::connect_to(const std::string& host, const uint16_t port) {
+    void Node::connect_to(const std::string& host, const uint16_t port) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
         auto new_conn = std::make_shared<Connection>(io_context_);
         if (!new_conn->socket().is_open()) {
             new_conn->socket().open(tcp::v4());
-            std::cout << "[Peer::connect_to] Opened socket" << std::endl;
+            spdlog::info("[Node::connect_to] Opened socket");
         }
 
         async_connect(new_conn->socket(), endpoints,
             [this, new_conn](const boost::system::error_code& ec, const tcp::endpoint&) {
                 if (ec) {
-                    std::cerr << "[Peer::connect_to] error: " << ec.message() << std::endl;
+                    spdlog::error("[Node::connect_to] Error {}", ec.message());
                     return;
                 }
 
@@ -71,7 +80,7 @@ namespace cp2p {
             });
     }
 
-    void Peer::broadcast(const Message& message) {
+    void Node::broadcast(const Message& message) {
         std::lock_guard lock(mutex_);
 
         for (const auto& [_, conn] : connections_) {
@@ -79,18 +88,22 @@ namespace cp2p {
         }
     }
 
-    void Peer::send_message(const std::string& id, const Message& message) {
+    void Node::send_message(const std::string& id, const Message& message) {
         std::lock_guard lock(mutex_);
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
-            std::cerr << "[Peer::send_message] id: " << id << " not found" << std::endl;
+            spdlog::error("[Node::send_message] id: {} not found", id);
             return;
         }
 
         it->second->deliver(message);
     }
 
-    std::vector<std::shared_ptr<Connection>> Peer::get_connections() {
+    std::string Node::get_id() const {
+        return id_;
+    }
+
+    std::vector<std::shared_ptr<Connection>> Node::get_connections() {
         std::vector<std::shared_ptr<Connection>> res;
         for (const auto& [_, conn] : connections_) {
             res.push_back(conn);
@@ -99,7 +112,7 @@ namespace cp2p {
         return res;
     }
 
-    void Peer::accept() {
+    void Node::accept() {
         auto new_conn = std::make_shared<Connection>(io_context_);
 
         acceptor_.async_accept(new_conn->socket(),
@@ -113,7 +126,7 @@ namespace cp2p {
                             connections_[new_conn->get_remote_id()] = new_conn;
                         }
 
-                        std::cout << "[Peer::accept] Accepted from: " << new_conn->get_remote_id() << std::endl;
+                        spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
                         new_conn->start();
 
                         const Message approve(id_, MessageType::APPROVE);
@@ -125,7 +138,19 @@ namespace cp2p {
             });
     }
 
-    std::string Peer::get_ip() const {
+    void Node::inform_server(const std::string& host, const std::uint16_t port) const {
+        tcp::resolver resolver(io_context_);
+        const auto endpoints = resolver.resolve(host, std::to_string(port));
+
+        tcp::socket socket(io_context_);
+        asio::connect(socket, endpoints);
+        {
+            write(socket, asio::buffer(id_));
+            socket.close();
+        }
+    }
+
+    std::string Node::get_ip() const {
         try {
             tcp::resolver resolver(io_context_);
             const tcp::resolver::results_type endpoints = resolver.resolve(asio::ip::host_name(), "");
@@ -137,12 +162,11 @@ namespace cp2p {
                 }
             }
         } catch (const std::exception& e) {
-            std::cerr << "[Peer::get_ip] " << e.what() << std::endl;
+            spdlog::error("[Node::get_ip] {}", e.what());
         }
 
         return "0.0.0.0";
     }
-
 
 
 } // cp2p
