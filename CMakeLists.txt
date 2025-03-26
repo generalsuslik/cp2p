@@ -77,8 +77,8 @@ add_executable(${PROJECT_NAME}
         network/src/message.cpp
         network/inc/message.hpp
 
-        network/inc/dht.hpp
-        network/src/dht.cpp
+#        network/inc/dht.hpp
+#        network/src/dht.cpp
 
         network/inc/message_queue.h
         
