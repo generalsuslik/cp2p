@@ -16,6 +16,9 @@ AES key is used to encrypt the messages, RSA - to encrypt AES key
 ### Requirements
 1) `boost`
 2) `openssl`
+3) `spdlog`
+4) `nlohmann/json`
+5) `google test (optionally)`
 
 ### How to run?
 1) Build the project with cmake 
@@ -27,15 +30,25 @@ AES key is used to encrypt the messages, RSA - to encrypt AES key
         ```
 2) In your build directory run:
 ```bash
-./cp2p <listen_port> <target_port>
+./cp2p [<listen_host>] <listen_port>
 ```
 
 ### Usage example:
-#### 🖥️ terminal1:
-```bash
-./cp2p 1234 1235
-```
-#### 🖥️ terminal2:
-```bash
-./cp2p 1235 1234
-```
+1) Local network (via wi-fi)
+    #### 🖥️ terminal1:
+    ```bash
+    ./cp2p 192.168.2.12 1234
+    ```
+    #### 🖥️ terminal2:
+    ```bash
+    ./cp2p 192.168.2.13 1234
+    ```
+2) On local host:
+   #### 🖥️ terminal1:
+    ```bash
+    ./cp2p 1234
+    ```
+   #### 🖥️ terminal2:
+    ```bash
+    ./cp2p 1234
+    ```

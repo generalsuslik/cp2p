@@ -23,6 +23,17 @@ namespace cp2p {
         encode_header();
     }
 
+    Message::Message(const nlohmann::json& json, const MessageType type)
+        : Message(json.dump(), type) {}
+
+    nlohmann::json Message::to_json() const {
+        try {
+            return nlohmann::json::parse(body_);
+        } catch (const nlohmann::json::exception&) {
+            return nlohmann::json::object();
+        }
+    }
+
     const char* Message::data() const {
         return data_;
     }
@@ -31,12 +42,16 @@ namespace cp2p {
         return data_;
     }
 
+    Message::message_header Message::header() const {
+        return header_;
+    }
+
     MessageType Message::type() const {
         return header_.message_type;
     }
 
     std::size_t Message::length() const {
-        return HEADER_LENGTH + body_length_;
+        return body_length_;
     }
 
     std::size_t Message::size() const {

@@ -5,8 +5,9 @@
 #ifndef MESSAGE_HPP
 #define MESSAGE_HPP
 
+#include <nlohmann/json.hpp>
+
 #include <cstdint>
-#include <cstring>
 #include <memory>
 
 namespace cp2p {
@@ -34,10 +35,17 @@ namespace cp2p {
 
         explicit Message(const std::string& message, MessageType type = MessageType::TEXT);
 
+        explicit Message(const nlohmann::json& json, MessageType type = MessageType::TEXT);
+
+        [[nodiscard]]
+        nlohmann::json to_json() const;
+
         [[nodiscard]]
         const char* data() const;
 
         char* data();
+
+        message_header header() const;
 
         [[nodiscard]]
         MessageType type() const;
