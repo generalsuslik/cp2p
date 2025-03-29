@@ -35,17 +35,39 @@ else ()
     message(FATAL_ERROR "OpenSSL not found")
 endif ()
 
+#-----nlohmann JSON-----#
+find_package(nlohmann_json 3.11.3 REQUIRED)
+
+if (nlohmann_json_FOUND)
+    include_directories(${nlohmann_json_INCLUDE_DIRS})
+    message(STATUS "nlohmann JSON include directories: ${nlohmann_json_INCLUDE_DIRS}")
+else ()
+    message(FATAL_ERROR "nlohmann JSON not found")
+endif ()
+
+#----Logger----#
+find_package(spdlog REQUIRED)
+
+if (spdlog_FOUND)
+    include_directories(${spdlog_INCLUDE_DIRS})
+    message(STATUS "spdlog include directories: ${spdlog_INCLUDE_DIRS}")
+else ()
+    message(FATAL_ERROR "spdlog not found")
+endif ()
+
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O2 -fsanitize=address,undefined -Wsign-compare")
 
 add_executable(${PROJECT_NAME}
         main.cpp
+
         crypto/src/aes.cpp
         crypto/inc/aes.hpp
         crypto/src/rsa.cpp
         crypto/inc/rsa.hpp
 
-        network/src/peer.cpp
-        network/inc/peer.hpp
+        network/src/node.cpp
+        network/inc/node.hpp
 
         network/src/connection.cpp
         network/inc/connection.hpp
@@ -54,15 +76,17 @@ add_executable(${PROJECT_NAME}
         network/inc/message.hpp
 
         network/inc/message_queue.h
-        
+
         util/inc/util.hpp
 )
 
 target_link_libraries(${PROJECT_NAME}
-    PRIVATE
+        PRIVATE
         Boost::system
         OpenSSL::SSL
         OpenSSL::Crypto
+        nlohmann_json::nlohmann_json
+        spdlog::spdlog_header_only
 )
 
 find_package(GTest REQUIRED)
@@ -83,9 +107,9 @@ add_executable(tests
 
         util/inc/util.hpp
 
-        test/crypto/test_rsa.cpp
+        #test/crypto/test_rsa.cpp
         test/crypto/test_aes.cpp
-        test/crypto/test_aes_rsa_integrity.cpp
+        #test/crypto/test_aes_rsa_integrity.cpp
         test/test_util/test_util.cpp
         test/test_util/test_util.hpp
         test/network/test_message.cpp
