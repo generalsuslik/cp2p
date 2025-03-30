@@ -23,8 +23,8 @@ namespace cp2p {
         return socket_;
     }
 
-    void Connection::start() {
-        read_header();
+    void Connection::start(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        read_header(on_success);
     }
 
     void Connection::accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
@@ -38,6 +38,7 @@ namespace cp2p {
 
     void Connection::close() {
         post(socket_.get_executor(), [this]{
+            socket_.shutdown(tcp::socket::shutdown_both);
             socket_.close();
         });
     }
@@ -68,7 +69,7 @@ namespace cp2p {
             asio::buffer(message_queue_.front()->data(), message_queue_.front()->length()),
             [this, self](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
-                    spdlog::error("[Connection::send_message] ", ec.message());
+                    spdlog::error("[Connection::send_message] {}", ec.message());
                     spdlog::info("Disconnected from {}", remote_id_);
                     close();
                     return;
@@ -90,12 +91,12 @@ namespace cp2p {
             [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (ec || !msg->decode_header()) {
                     if (ec == asio::error::eof) {
-                        spdlog::info("Disconnected from {}", remote_id_);
+                        spdlog::info("[Connection::read_header] Disconnected from {}", remote_id_);
                         close();
                         return;
                     }
 
-                    spdlog::error("[Connection::read_header] ", ec.message());
+                    spdlog::error("[Connection::read_header] {}", ec.message());
                     close();
                     return;
                 }
@@ -111,7 +112,7 @@ namespace cp2p {
             asio::buffer(msg->body(), msg->body_length()),
             [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
-                    spdlog::error("[Connection::read_header] ", ec.message());
+                    spdlog::error("[Connection::read_header] {}", ec.message());
                     spdlog::info("Disconnected from {}", remote_id_);
                     close();
                     return;
@@ -123,7 +124,7 @@ namespace cp2p {
                 } else if (!initialized_ && on_success) {
                     read_header(on_success);
                 } else {
-                    spdlog::info("Received [{}]: {}", get_remote_id(), std::string(msg->body(), msg->body_length()));
+                    on_success(msg);
 
                     read_header();
                 }

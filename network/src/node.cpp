@@ -40,7 +40,7 @@ namespace cp2p {
 
         id_ = std::to_string(std::hash<std::string>{}(to_hex(rsa_public_key_.begin(), rsa_public_key_.end())));
 
-        spdlog::info("Initialized with id: {}", id_);;
+        spdlog::info("Initialized with id: {}", id_);
 
         accept();
     }
@@ -79,7 +79,7 @@ namespace cp2p {
                         connections_[id] = new_conn;
                     }
 
-                    new_conn->start();
+                    receive(new_conn);
                     spdlog::info("[Node::connect_to] Connected to {}", id);
                 });
             });
@@ -115,7 +115,7 @@ namespace cp2p {
                         connections_[id] = new_conn;
                     }
 
-                    new_conn->start();
+                    receive(new_conn);
                     spdlog::info("[Node::connect_to] Connected to {}", id);
                 });
             });
@@ -138,6 +138,50 @@ namespace cp2p {
         }
 
         it->second->deliver(message);
+    }
+
+    void Node::receive(const std::shared_ptr<Connection>& conn) const {
+        conn->start([this, conn](const std::shared_ptr<Message>& msg) {
+            if (msg->type() == MessageType::DISCONNECT) {
+                spdlog::info("[Node::receive] Disconnected");
+            } else if (msg->type() == MessageType::TEXT) {
+                spdlog::info("Received [{}]: {}", conn->get_remote_id(), msg->body());
+            }
+        });
+    }
+
+    void Node::disconnect_from_all() {
+        if (connections_.empty()) {
+            return;
+        }
+
+        for (const auto& id : connections_ | std::views::keys) {
+            disconnect(id);
+        }
+
+        spdlog::info("Disconnected from all connected nodes");
+    }
+
+    void Node::disconnect(const std::string& id) {
+        if (!connections_.contains(id)) {
+            spdlog::error("[Node::disconnect] id: {} not found", id);
+            return;
+        }
+
+        const Message disconnect_message(id_, MessageType::DISCONNECT);
+        std::cout << disconnect_message << std::endl;
+
+        send_message(id, disconnect_message);
+    }
+
+    void Node::remove_connection(const std::string& id) {
+        std::lock_guard lock(mutex_);
+        const auto it = connections_.find(id);
+        if (it == connections_.end()) {
+            spdlog::error("[Node::remove_connection] id: {} not found", id);
+        }
+
+        connections_.erase(it);
     }
 
     std::string Node::get_id() const {
@@ -175,42 +219,43 @@ namespace cp2p {
                         }
 
                         spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
-                        new_conn->start();
+                        receive(new_conn);
 
                         const Message approve(id_, MessageType::APPROVE);
                         new_conn->deliver(approve);
-                    });
-                }
+                   });
+               }
 
-                accept();
-            });
+               accept();
+           });
     }
 
-        void Node::inform_server(const std::string& host, const std::uint16_t port) const {
+    void Node::inform_server(const std::string& host, const std::uint16_t port) const {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
-        tcp::socket socket(io_context_);
-        asio::connect(socket, endpoints);
+        beast::tcp_stream stream(io_context_);
+        stream.connect(endpoints);
 
         const json payload = {
             { "id", id_ },
             { "host", host_ },
-            { "port", port_},
+            { "port", port_ },
         };
         spdlog::info("Payload dump: {}", payload.dump());
 
         http::request<http::string_body> req(http::verb::post, "/", 11);
+        req.set(http::field::host, host);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
         req.set(http::field::content_type, "application/json");
         req.body() = payload.dump();
         req.prepare_payload();
 
-        http::write(socket, req);
+        http::write(stream, req);
 
         beast::flat_buffer buffer;
         http::response<http::string_body> res;
-        http::read(socket, buffer, res);
+        http::read(stream, buffer, res);
 
         if (res.result() == http::status::temporary_redirect || res.result() == http::status::found) {
             auto location = res[http::field::location];
@@ -221,13 +266,11 @@ namespace cp2p {
 
             req.target(new_path);
             buffer.consume(buffer.size());  // Clear buffer
-            http::read(socket, buffer, res);
+            http::read(stream, buffer, res);
         }
 
-        std::cout << "Response: " << res << std::endl;
-
         beast::error_code ec;
-        ec = socket.shutdown(tcp::socket::shutdown_both, ec);
+        ec = stream.socket().shutdown(tcp::socket::shutdown_both, ec);
         if (ec && ec != beast::errc::not_connected) {
             spdlog::error("[Node::inform_server] socket shutdown failed {}", ec.message());
         }
@@ -240,7 +283,8 @@ namespace cp2p {
         const auto endpoints = resolver.resolve(host, std::to_string(port));
         stream.connect(endpoints);
 
-        http::request<http::string_body> req(http::verb::get, "/connect/", 11);
+        http::request<http::string_body> req(http::verb::get, "/connect/", 11);\
+        req.set(http::field::host, host);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         http::write(stream, req);
@@ -261,8 +305,6 @@ namespace cp2p {
             http::write(stream, req);
             http::read(stream, buffer, res);
         }
-
-        std::cout << res << std::endl;
 
         json response_json = json::parse(res.body());
         if (response_json.contains("id")) {
@@ -290,12 +332,11 @@ namespace cp2p {
                 }
             }
         } catch (const std::exception& e) {
-            std::cerr << "[Peer::get_ip] " << e.what() << std::endl;
+            spdlog::error("[Node::get_ip] Error {}", e.what());
         }
 
         return "0.0.0.0";
     }
-
 
 
 } // cp2p

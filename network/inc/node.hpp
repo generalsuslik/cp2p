@@ -17,7 +17,7 @@ namespace cp2p {
 
     using json = nlohmann::json;
 
-    class Node {
+    class Node : public std::enable_shared_from_this<Node> {
     public:
         Node(asio::io_context& io_context, const std::string& host, uint16_t port, bool is_hub = false);
 
@@ -53,13 +53,29 @@ namespace cp2p {
          */
         void send_message(const std::string& id, const Message& message);
 
+        void receive(const std::shared_ptr<Connection>& conn) const;
+
+        /**
+         * @brief Disconnects from all connected nodes
+         */
+        void disconnect_from_all();
+
+        /**
+         * @brief Disconnects from node with id_ == id
+         *
+         * @param id - node to disconnect 's id
+         */
+        void disconnect(const std::string& id);
+
+        void remove_connection(const std::string& id);
+
         /**
          * @brief Returns self id
          */
         std::string get_id() const;
 
         /**
-         * @brief Retrurns vector of all the node's connections
+         * @brief Returns vector of all the node's connections
          */
         std::vector<std::shared_ptr<Connection>> get_connections();
 
@@ -78,6 +94,8 @@ namespace cp2p {
          * Creates a new Connection object
          */
         void accept();
+
+        json search_node(const std::string& id);
 
         /**
          * @brief CALLED ONLY IF is_hub SET TO TRUE \n

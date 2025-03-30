@@ -8,27 +8,35 @@
 
 #include <iostream>
 #include <cstdint>
+#include <spdlog/spdlog.h>
 
 int main(const int argc, char* argv[]) {
     try {
         std::string host_;
-        std::string port_;
+        std::uint16_t port_;
         if (argc < 2) {
             host_ = "127.0.0.1";
-            port_ = "9000";
+            port_ = 9000;
         } else {
             host_ = "127.0.0.1";
-            port_ = argv[1];
+            port_ = std::atoi(argv[1]);
         }
 
         boost::asio::io_context io_context;
 
         if (argc >= 3) {
             host_ = argv[1];
-            port_ = argv[2];
+            port_ = std::atoi(argv[2]);
         }
 
-       cp2p::Node peer(io_context, host_, std::atoi(port_.c_str()));
+        cp2p::Node node(io_context, host_, port_);
+        std::cout << "Do you want to be a hub? (y/N) ";
+        std::string ans;
+        std::cin >> ans;
+        if (ans == "y") {
+            node.set_hub(true);
+        }
+        std::cout.flush();
 
         std::thread io_thread([&io_context] {
             io_context.run();
@@ -48,25 +56,37 @@ int main(const int argc, char* argv[]) {
                 iss.clear();
 
                 cp2p::Message msg(message);
-                peer.send_message(id, msg);
+                node.send_message(id, msg);
             } else if (line.starts_with("connect ")) {
                 std::istringstream iss(line);
-                std::string command, host;
-                uint16_t port;
-                iss >> command >> host >> port;
 
-                peer.connect_to(host, port);
+                std::string command, option; // options: -h # via hub, -ip # via ip address
+                iss >> command >> option;
+                if (option == "-h") {
+                    spdlog::debug("-h");
+                    std::string id, host;
+                    std::uint16_t port;
+                    iss >> id >> host >> port;
 
+                    node.connect_to(id, host, port);
+                } else if (option == "-ip") {
+                    std::string host;
+                    std::uint16_t port;
+                    iss >> host >> port;
+
+                    node.connect_to(host, port);
+                }
             } else if (line == "exit") {
+                // node.disconnect_from_all();
                 break;
             } else if (line == "lc") {
-                auto conns = peer.get_connections();
+                auto conns = node.get_connections();
                 for (const auto& conn : conns) {
                     std::cout << conn->get_remote_id() << std::endl;
                 }
             } else {
                 cp2p::Message msg(line);
-                peer.broadcast(msg);
+                node.broadcast(msg);
             }
         }
 
