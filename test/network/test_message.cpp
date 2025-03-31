@@ -15,8 +15,8 @@ TEST(TestMessage, test_message_creation) {
     const std::string message_str = random_string();
     const Message message(message_str);
 
-    assert(message.header().message_length == message.length());
-    assert(message.length() == message_str.length());
+    assert(message.header().message_length == message.body_length());
+    assert(message.body_length() == message_str.length());
     assert(message.type() == MessageType::TEXT);
     assert(message.body() == message_str);
 }
