@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-project(cp2p VERSION 0.1)
+project(cp2p_build VERSION 0.2)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -58,9 +58,7 @@ endif ()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O2 -fsanitize=address,undefined -Wsign-compare")
 
-add_executable(${PROJECT_NAME}
-        main.cpp
-
+set(SOURCES
         crypto/src/aes.cpp
         crypto/inc/aes.hpp
         crypto/src/rsa.cpp
@@ -75,9 +73,17 @@ add_executable(${PROJECT_NAME}
         network/src/message.cpp
         network/inc/message.hpp
 
-        network/inc/message_queue.h
+        network/inc/message_queue.hpp
 
         util/inc/util.hpp
+
+        include/cp2p.hpp
+)
+
+add_executable(${PROJECT_NAME}
+        main.cpp
+
+        ${SOURCES}
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -95,7 +101,6 @@ include(GoogleTest)
 enable_testing()
 
 add_executable(tests
-
         crypto/src/rsa.cpp
         crypto/inc/rsa.hpp
 
@@ -117,3 +122,24 @@ add_executable(tests
 target_link_libraries(tests GTest::GTest GTest::Main OpenSSL::SSL OpenSSL::Crypto)
 
 gtest_discover_tests(tests)
+
+#---Library stuff---#
+set(LIBRARY cp2p)
+add_library(${LIBRARY}
+        SHARED
+        ${SOURCES}
+)
+
+target_include_directories(${LIBRARY}
+        PUBLIC
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(${LIBRARY}
+        PRIVATE
+        Boost::system
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        nlohmann_json::nlohmann_json
+        spdlog::spdlog_header_only
+)

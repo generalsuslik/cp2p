@@ -6,7 +6,7 @@
 #define CONNECTION_H
 
 #include "message.hpp"
-#include "message_queue.h"
+#include "message_queue.hpp"
 
 #include <boost/asio.hpp>
 

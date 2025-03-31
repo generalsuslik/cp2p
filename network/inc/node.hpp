@@ -59,7 +59,7 @@ namespace cp2p {
         std::string get_id() const;
 
         /**
-         * @brief Retrurns vector of all the node's connections
+         * @brief Returns vector of all the node's connections
          */
         std::vector<std::shared_ptr<Connection>> get_connections();
 

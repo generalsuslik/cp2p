@@ -51,7 +51,7 @@ namespace cp2p {
     }
 
     std::size_t Message::length() const {
-        return body_length_;
+        return HEADER_LENGTH + body_length_;
     }
 
     std::size_t Message::size() const {
