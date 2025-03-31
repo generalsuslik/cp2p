@@ -10,6 +10,8 @@
 
 namespace cp2p::aes {
 
+    constexpr size_t key_length = 32; // 256 bits for AES-256
+    constexpr size_t iv_length  = 16; // 128-bit IV (initialization vector)
 
     /**
      * @brief Generates a random AES-256 key and a 128-bit IV.

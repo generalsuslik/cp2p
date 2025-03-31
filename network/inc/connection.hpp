@@ -25,7 +25,7 @@ namespace cp2p {
 
         tcp::socket& socket();
 
-        void start();
+        void start(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
         void accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 

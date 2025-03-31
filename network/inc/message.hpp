@@ -15,6 +15,7 @@ namespace cp2p {
     enum class MessageType : uint32_t {
         HANDSHAKE,
         APPROVE,
+        DISCONNECT,
         TEXT,
         FILE, // yet not supported
     };
@@ -24,6 +25,8 @@ namespace cp2p {
         struct message_header {
             std::size_t message_length = 0;
             MessageType message_type = MessageType::TEXT;
+            // std::vector<unsigned char> aes_key;
+            // std::vector<unsigned char> aes_iv;
         };
 
         enum : uint32_t {
@@ -37,6 +40,10 @@ namespace cp2p {
 
         explicit Message(const nlohmann::json& json, MessageType type = MessageType::TEXT);
 
+        void encrypt();
+
+        void decrypt();
+
         [[nodiscard]]
         nlohmann::json to_json() const;
 
@@ -45,6 +52,7 @@ namespace cp2p {
 
         char* data();
 
+        [[nodiscard]]
         message_header header() const;
 
         [[nodiscard]]

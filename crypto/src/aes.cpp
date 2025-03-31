@@ -13,8 +13,6 @@ namespace cp2p::aes {
 
 
     std::pair<std::vector<unsigned char>, std::vector<unsigned char>> generate_aes_key_iv() {
-        constexpr size_t key_length = 32; // 256 bits for AES-256
-        constexpr size_t iv_length  = 16; // 128-bit IV (initialization vector)
 
         std::vector<unsigned char> key(key_length);
         std::vector<unsigned char> iv(iv_length);
