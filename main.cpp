@@ -21,18 +21,19 @@ int main(const int argc, char* argv[]) {
             port_ = argv[1];
         }
 
-        boost::asio::io_context io_context;
+        // boost::asio::io_context io_context;
 
         if (argc >= 3) {
             host_ = argv[1];
             port_ = argv[2];
         }
 
-        cp2p::Node peer(io_context, host_, std::atoi(port_.c_str()));
+        cp2p::Node node(host_, std::atoi(port_.c_str()));
 
-        std::thread io_thread([&io_context] {
-            io_context.run();
-        });
+        // std::thread io_thread([&io_context] {
+        //     io_context.run();
+        // });
+        node.run();
 
         std::string line;
         while (true) {
@@ -48,30 +49,41 @@ int main(const int argc, char* argv[]) {
                 iss.clear();
 
                 cp2p::Message msg(message);
-                peer.send_message(id, msg);
+                node.send_message(id, msg);
             } else if (line.starts_with("connect ")) {
                 std::istringstream iss(line);
-                std::string command, host;
-                uint16_t port;
-                iss >> command >> host >> port;
+                std::string command, mode;
+                iss >> command >> mode;
 
-                peer.connect_to(host, port);
+                if (mode == "-h") { // hub
+                    std::string id;
+                    std::string hub_host;
+                    std::uint16_t hub_port;
 
+                    iss >> id >> hub_host >> hub_port;
+                    node.connect_to(id, hub_host, hub_port);
+                } else if (mode == "-ip") { // directly via target's ip
+                    std::string target_host;
+                    std::uint16_t target_port;
+                    iss >> target_host >> target_port;
+
+                    node.connect_to(target_host, target_port);
+                }
             } else if (line == "exit") {
                 break;
             } else if (line == "lc") {
-                auto conns = peer.get_connections();
+                auto conns = node.get_connections();
                 for (const auto& conn : conns) {
                     std::cout << conn->get_remote_id() << std::endl;
                 }
             } else {
                 cp2p::Message msg(line);
-                peer.broadcast(msg);
+                node.broadcast(msg);
             }
         }
 
-        io_context.stop();
-        io_thread.join();
+        // io_context.stop();
+        // io_thread.join();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }

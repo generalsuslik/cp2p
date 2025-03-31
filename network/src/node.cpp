@@ -20,9 +20,8 @@ namespace cp2p {
 
     using json = nlohmann::json;
 
-    Node::Node(asio::io_context& io_context, const std::string& host, const uint16_t port, const bool is_hub)
-            : io_context_(io_context)
-            , acceptor_(io_context_)
+    Node::Node(const std::string& host, const std::uint16_t port, const bool is_hub)
+            : acceptor_(io_context_)
             , is_hub_(is_hub)
             , host_(host)
             , port_(port) {
@@ -43,6 +42,25 @@ namespace cp2p {
         spdlog::info("Initialized with id: {}", id_);
 
         accept();
+        run();
+    }
+
+    Node::~Node() {
+        io_context_.stop();
+
+        if (io_thread_.joinable()) {
+            io_thread_.join();
+        }
+    }
+
+    void Node::run() {
+        if (io_thread_.joinable()) {
+            return;
+        }
+
+        io_thread_ = std::thread([this] {
+            io_context_.run();
+        });
     }
 
     void Node::connect_to(const std::string&, const std::string& hub_host, const std::uint16_t hub_port) {
@@ -85,7 +103,7 @@ namespace cp2p {
             });
     }
 
-    void Node::connect_to(const std::string& host, const uint16_t port) {
+    void Node::connect_to(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
@@ -230,7 +248,7 @@ namespace cp2p {
            });
     }
 
-    void Node::inform_server(const std::string& host, const std::uint16_t port) const {
+    void Node::inform_server(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
@@ -276,7 +294,7 @@ namespace cp2p {
         }
     }
 
-    json Node::get_hub_data(const std::string& host, const std::uint16_t port) const {
+    json Node::get_hub_data(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
         beast::tcp_stream stream(io_context_);
 
@@ -320,7 +338,7 @@ namespace cp2p {
         return {};
     }
 
-    std::string Node::get_ip() const {
+    std::string Node::get_ip() {
         try {
             tcp::resolver resolver(io_context_);
             const tcp::resolver::results_type endpoints = resolver.resolve(asio::ip::host_name(), "");

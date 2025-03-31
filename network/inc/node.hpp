@@ -19,7 +19,11 @@ namespace cp2p {
 
     class Node : public std::enable_shared_from_this<Node> {
     public:
-        Node(asio::io_context& io_context, const std::string& host, uint16_t port, bool is_hub = false);
+        Node(const std::string& host, uint16_t port, bool is_hub = false);
+
+        ~Node();
+
+        void run();
 
         /**
          * @brief Connects to target_id via hub's hub_cost & hub's hub_port
@@ -104,7 +108,7 @@ namespace cp2p {
          * @param host - server's host
          * @param port  - server's port
          */
-        void inform_server(const std::string& host, std::uint16_t port) const;
+        void inform_server(const std::string& host, std::uint16_t port);
 
         /**
          * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
@@ -114,12 +118,14 @@ namespace cp2p {
          * @param port - server's port
          * @return hub's info json: { "id": ..., "host": ..., "port": ... }
          */
-        json get_hub_data(const std::string& host, std::uint16_t port) const;
+        json get_hub_data(const std::string& host, std::uint16_t port);
 
-        std::string get_ip() const;
+        std::string get_ip();
 
     private:
-        asio::io_context& io_context_;
+        asio::io_context io_context_;
+        std::thread io_thread_;
+
         tcp::acceptor acceptor_;
 
         std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "public key hash" : conn
