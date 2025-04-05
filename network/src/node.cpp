@@ -12,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include <iostream>
+#include <utility>
 
 namespace cp2p {
 
@@ -20,14 +21,17 @@ namespace cp2p {
 
     using json = nlohmann::json;
 
-    Node::Node(const std::string& host, const std::uint16_t port, const bool is_hub)
+    Node::Node() : Node("0.0.0.0", 9000) {}
+
+    Node::Node(std::string host, const std::uint16_t port, const bool is_hub)
             : acceptor_(io_context_)
             , is_hub_(is_hub)
-            , host_(host)
+            , is_active_(true)
+            , host_(std::move(host))
             , port_(port) {
         std::tie(rsa_public_key_, rsa_private_key_) = rsa::generate_rsa_keys();
 
-        const tcp::endpoint ep(asio::ip::make_address(host), port);
+        const tcp::endpoint ep(asio::ip::make_address(host_), port_);
         acceptor_.open(ep.protocol());
 
         boost::system::error_code ec;
@@ -46,11 +50,7 @@ namespace cp2p {
     }
 
     Node::~Node() {
-        io_context_.stop();
-
-        if (io_thread_.joinable()) {
-            io_thread_.join();
-        }
+        stop();
     }
 
     void Node::run() {
@@ -60,6 +60,19 @@ namespace cp2p {
 
         io_thread_ = std::thread([this] {
             io_context_.run();
+        });
+    }
+
+    void Node::stop() {
+        is_active_ = false;
+
+        disconnect_from_all([this] {
+            acceptor_.close();
+            io_context_.stop();
+
+            if (io_thread_.joinable()) {
+                io_thread_.join();
+            }
         });
     }
 
@@ -93,11 +106,11 @@ namespace cp2p {
                     new_conn->set_remote_id(id);
 
                     {
-                        std::unique_lock lock(mutex_);
+                        std::lock_guard lock(mutex_);
                         connections_[id] = new_conn;
                     }
 
-                    receive(new_conn);
+                    new_conn->start();
                     spdlog::info("[Node::connect_to] Connected to {}", id);
                 });
             });
@@ -124,16 +137,15 @@ namespace cp2p {
 
                 new_conn->connect(handshake, [this, new_conn](const std::shared_ptr<Message>& msg) {
                     const std::string id = msg->body();
-                    std::cout << "id: " << id << std::endl;
 
                     new_conn->set_remote_id(id);
 
                     {
-                        std::unique_lock lock(mutex_);
+                        std::lock_guard lock(mutex_);
                         connections_[id] = new_conn;
                     }
 
-                    receive(new_conn);
+                    new_conn->start();
                     spdlog::info("[Node::connect_to] Connected to {}", id);
                 });
             });
@@ -158,17 +170,7 @@ namespace cp2p {
         it->second->deliver(message);
     }
 
-    void Node::receive(const std::shared_ptr<Connection>& conn) const {
-        conn->start([this, conn](const std::shared_ptr<Message>& msg) {
-            if (msg->type() == MessageType::DISCONNECT) {
-                spdlog::info("[Node::receive] Disconnected");
-            } else if (msg->type() == MessageType::TEXT) {
-                spdlog::info("Received [{}]: {}", conn->get_remote_id(), msg->body());
-            }
-        });
-    }
-
-    void Node::disconnect_from_all() {
+    void Node::disconnect_from_all(const std::function<void()>& on_success) {
         if (connections_.empty()) {
             return;
         }
@@ -178,6 +180,7 @@ namespace cp2p {
         }
 
         spdlog::info("Disconnected from all connected nodes");
+        on_success();
     }
 
     void Node::disconnect(const std::string& id) {
@@ -189,7 +192,10 @@ namespace cp2p {
         const Message disconnect_message(id_, MessageType::DISCONNECT);
         std::cout << disconnect_message << std::endl;
 
-        send_message(id, disconnect_message);
+        spdlog::info("[Node::disconnect] Disconnecting...");
+        connections_[id]->disconnect(disconnect_message);
+        connections_[id]->close();
+        connections_.erase(id);
     }
 
     void Node::remove_connection(const std::string& id) {
@@ -237,7 +243,7 @@ namespace cp2p {
                         }
 
                         spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
-                        receive(new_conn);
+                        new_conn->start();
 
                         const Message approve(id_, MessageType::APPROVE);
                         new_conn->deliver(approve);

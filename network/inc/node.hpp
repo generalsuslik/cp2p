@@ -19,11 +19,15 @@ namespace cp2p {
 
     class Node : public std::enable_shared_from_this<Node> {
     public:
-        Node(const std::string& host, uint16_t port, bool is_hub = false);
+        Node();
+
+        Node(std::string  host, uint16_t port, bool is_hub = false);
 
         ~Node();
 
         void run();
+
+        void stop();
 
         /**
          * @brief Connects to target_id via hub's hub_cost & hub's hub_port
@@ -57,12 +61,10 @@ namespace cp2p {
          */
         void send_message(const std::string& id, const Message& message);
 
-        void receive(const std::shared_ptr<Connection>& conn) const;
-
         /**
          * @brief Disconnects from all connected nodes
          */
-        void disconnect_from_all();
+        void disconnect_from_all(const std::function<void()>& on_success);
 
         /**
          * @brief Disconnects from node with id_ == id
@@ -132,6 +134,7 @@ namespace cp2p {
         std::mutex mutex_;
 
         bool is_hub_;
+        bool is_active_;
 
         std::string id_;
         std::string host_;

@@ -13,7 +13,8 @@ namespace cp2p {
 
     Connection::Connection(asio::io_context& io_context)
         : socket_(io_context)
-        , initialized_(false) {}
+        , is_initialized_(false)
+        , is_closed_(false) {}
 
     Connection::~Connection() {
         close();
@@ -23,8 +24,8 @@ namespace cp2p {
         return socket_;
     }
 
-    void Connection::start(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
-        read_header(on_success);
+    void Connection::start() {
+        read_header();
     }
 
     void Connection::accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
@@ -36,10 +37,17 @@ namespace cp2p {
         accept(on_success);
     }
 
+    void Connection::disconnect(const Message& handshake) {
+        deliver(handshake);
+    }
+
     void Connection::close() {
+        is_closed_ = true;
+
         post(socket_.get_executor(), [this]{
             socket_.shutdown(tcp::socket::shutdown_both);
             socket_.close();
+            std::cout << "Closed" << std::endl;
         });
     }
 
@@ -120,11 +128,11 @@ namespace cp2p {
 
                 if (on_success) {
                     on_success(msg);
-                    initialized_ = true;
-                } else if (!initialized_ && on_success) {
+                    is_initialized_ = true;
+                } else if (!is_initialized_ && on_success) {
                     read_header(on_success);
                 } else {
-                    on_success(msg);
+                    spdlog::info("Received [{}]: {}", get_remote_id(), std::string(msg->body(), msg->body_length()));
 
                     read_header();
                 }

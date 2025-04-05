@@ -12,27 +12,22 @@
 int main(const int argc, char* argv[]) {
     try {
         std::string host_;
-        std::string port_;
+        std::uint16_t port_;
         if (argc < 2) {
             host_ = "127.0.0.1";
-            port_ = "9000";
+            port_ = 9000;
         } else {
             host_ = "127.0.0.1";
-            port_ = argv[1];
+            port_ = std::atoi(argv[1]);
         }
-
-        // boost::asio::io_context io_context;
 
         if (argc >= 3) {
             host_ = argv[1];
-            port_ = argv[2];
+            port_ = std::atoi(argv[2]);
         }
 
-        cp2p::Node node(host_, std::atoi(port_.c_str()));
+        cp2p::Node node(host_, port_);
 
-        // std::thread io_thread([&io_context] {
-        //     io_context.run();
-        // });
         node.run();
 
         std::string line;
@@ -68,8 +63,11 @@ int main(const int argc, char* argv[]) {
                     iss >> target_host >> target_port;
 
                     node.connect_to(target_host, target_port);
+                } else {
+                    std::cout << "Usage: " << argv[0] << "[-h|-ip] [<host>] <port>" << std::endl;
                 }
             } else if (line == "exit") {
+                node.stop();
                 break;
             } else if (line == "lc") {
                 auto conns = node.get_connections();
@@ -81,9 +79,6 @@ int main(const int argc, char* argv[]) {
                 node.broadcast(msg);
             }
         }
-
-        // io_context.stop();
-        // io_thread.join();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
