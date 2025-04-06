@@ -21,9 +21,9 @@ namespace cp2p {
             , body_(message)
             , body_length_(message.length())
             , header_(message.length(), type) {
-        // std::tie(header_.aes_key, header_.aes_iv) = aes::generate_aes_key_iv();
 
         std::strcpy(data_ + HEADER_LENGTH, message.c_str());
+        body_ = message;
         encode_header();
     }
 
@@ -110,14 +110,6 @@ namespace cp2p {
         return true;
     }
 
-    std::ostream& operator<<(std::ostream& os, const std::vector<unsigned char>& rhs) {
-        for (const auto val : rhs) {
-            os << val;
-        }
-
-        return os;
-    }
-
     void Message::encode_header() {
         std::ostringstream oss;
 
@@ -133,7 +125,8 @@ namespace cp2p {
     }
 
     std::ostream& operator<<(std::ostream& os, const Message& message) {
-        os << message.data();
+        const auto out =  std::string(message.data(), message.size());
+        os << out;
 
         return os;
     }

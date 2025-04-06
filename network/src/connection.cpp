@@ -24,8 +24,8 @@ namespace cp2p {
         return socket_;
     }
 
-    void Connection::start() {
-        read_header();
+    void Connection::start(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        read_header(on_success);
     }
 
     void Connection::accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
@@ -33,21 +33,42 @@ namespace cp2p {
     }
 
     void Connection::connect(const Message& handshake, const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        if (is_closed_) {
+            return;
+        }
+
+        is_initialized_ = true;
         deliver(handshake);
         accept(on_success);
     }
 
-    void Connection::disconnect(const Message& handshake) {
+    void Connection::disconnect(const Message& handshake, const std::function<void()>& on_success) {
         deliver(handshake);
+        on_success();
     }
 
     void Connection::close() {
         is_closed_ = true;
+        if (!socket_.is_open()) {
+            return;
+        }
 
         post(socket_.get_executor(), [this]{
-            socket_.shutdown(tcp::socket::shutdown_both);
-            socket_.close();
-            std::cout << "Closed" << std::endl;
+            boost::system::error_code ec;
+
+            ec = socket_.shutdown(tcp::socket::shutdown_both, ec);
+            if (ec) {
+                spdlog::error("[Connection::close] Shutdown failed: {}", ec.message());
+            } else {
+                spdlog::info("[Connection::close] socket shutdown");
+            }
+
+            ec = socket_.close(ec);
+            if (ec) {
+                spdlog::error("[Connection::close] Close failed: {}", ec.message());
+            } else {
+                spdlog::info("[Connection::close] socket closed");
+            }
         });
     }
 
@@ -60,6 +81,10 @@ namespace cp2p {
     }
 
     void Connection::deliver(const Message& msg) {
+        if (is_closed_) {
+            return;
+        }
+
         post(socket_.get_executor(),
             [this, msg] {
                 const bool write_in_progress = !message_queue_.empty();
@@ -71,6 +96,10 @@ namespace cp2p {
     }
 
     void Connection::send_message() {
+        if (is_closed_) {
+            return;
+        }
+
         auto self = shared_from_this();
 
         async_write(socket_,
@@ -83,6 +112,8 @@ namespace cp2p {
                     return;
                 }
 
+                spdlog::info("[Connection::send_message] sent {}", message_queue_.front()->body());
+
                 message_queue_.pop_front();
                 if (!message_queue_.empty()) {
                     send_message();
@@ -91,6 +122,10 @@ namespace cp2p {
     }
 
     void Connection::read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        if (is_closed_) {
+            return;
+        }
+
         auto self = shared_from_this();
         auto msg = std::make_shared<Message>();
 
@@ -113,7 +148,12 @@ namespace cp2p {
             });
     }
 
-    void Connection::read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+    void Connection::read_body(const std::shared_ptr<Message>& msg,
+                               const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+        if (is_closed_) {
+            return;
+        }
+
         auto self = shared_from_this();
 
         async_read(socket_,
@@ -126,15 +166,15 @@ namespace cp2p {
                     return;
                 }
 
-                if (on_success) {
+                if (on_success && (msg->type() == MessageType::HANDSHAKE || msg->type() == MessageType::ACCEPT)) {
                     on_success(msg);
                     is_initialized_ = true;
                 } else if (!is_initialized_ && on_success) {
                     read_header(on_success);
                 } else {
-                    spdlog::info("Received [{}]: {}", get_remote_id(), std::string(msg->body(), msg->body_length()));
+                    on_success(msg);
 
-                    read_header();
+                    read_header(on_success);
                 }
             });
     }

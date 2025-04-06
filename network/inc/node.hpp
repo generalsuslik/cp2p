@@ -101,6 +101,8 @@ namespace cp2p {
          */
         void accept();
 
+        void receive(const std::shared_ptr<Connection>& conn);
+
         json search_node(const std::string& id);
 
         /**

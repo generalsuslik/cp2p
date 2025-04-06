@@ -25,13 +25,13 @@ namespace cp2p {
 
         tcp::socket& socket();
 
-        void start();
+        void start(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
         void accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
         void connect(const Message& handshake, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
-        void disconnect(const Message& handshake);
+        void disconnect(const Message& handshake, const std::function<void()>& on_success);
 
         void close();
 
@@ -44,9 +44,9 @@ namespace cp2p {
     private:
         void send_message();
 
-        void read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success = nullptr);
+        void read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
-        void read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success = nullptr);
+        void read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
         void handle_message(const Message& msg);
 

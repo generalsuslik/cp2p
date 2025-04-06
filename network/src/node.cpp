@@ -110,7 +110,7 @@ namespace cp2p {
                         connections_[id] = new_conn;
                     }
 
-                    new_conn->start();
+                    receive(new_conn);
                     spdlog::info("[Node::connect_to] Connected to {}", id);
                 });
             });
@@ -136,6 +136,7 @@ namespace cp2p {
                 const Message handshake(id_, MessageType::HANDSHAKE);
 
                 new_conn->connect(handshake, [this, new_conn](const std::shared_ptr<Message>& msg) {
+                    // processing ACCEPT msg
                     const std::string id = msg->body();
 
                     new_conn->set_remote_id(id);
@@ -145,7 +146,7 @@ namespace cp2p {
                         connections_[id] = new_conn;
                     }
 
-                    new_conn->start();
+                    receive(new_conn);
                     spdlog::info("[Node::connect_to] Connected to {}", id);
                 });
             });
@@ -190,12 +191,12 @@ namespace cp2p {
         }
 
         const Message disconnect_message(id_, MessageType::DISCONNECT);
-        std::cout << disconnect_message << std::endl;
 
         spdlog::info("[Node::disconnect] Disconnecting...");
-        connections_[id]->disconnect(disconnect_message);
-        connections_[id]->close();
-        connections_.erase(id);
+        connections_[id]->disconnect(disconnect_message, [this, &id] {
+            connections_[id]->close();
+            connections_.erase(id);
+        });
     }
 
     void Node::remove_connection(const std::string& id) {
@@ -242,16 +243,28 @@ namespace cp2p {
                             connections_[new_conn->get_remote_id()] = new_conn;
                         }
 
-                        spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
-                        new_conn->start();
-
-                        const Message approve(id_, MessageType::APPROVE);
+                        const Message approve(id_, MessageType::ACCEPT);
                         new_conn->deliver(approve);
-                   });
-               }
 
-               accept();
+                        spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
+                        receive(new_conn);
+                   });
+                }
+
+                accept();
            });
+    }
+
+    void Node::receive(const std::shared_ptr<Connection>& conn) {
+        conn->start([this, conn](const std::shared_ptr<Message>& msg) {
+            if (msg->type() == MessageType::DISCONNECT) {
+                spdlog::info("[Node::receive] Disconnecting...");
+                std::cout << "ASD: " << msg->body() << std::endl;
+                connections_.erase(msg->body());
+            } else if (msg->type() == MessageType::TEXT) {
+                spdlog::info("Received [{}]: {}", conn->get_remote_id(), std::string(msg->body(), msg->body_length()));
+            }
+        });
     }
 
     void Node::inform_server(const std::string& host, const std::uint16_t port) {
