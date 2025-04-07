@@ -32,32 +32,32 @@ namespace cp2p {
         /**
          * @brief Connects to target_id via hub's hub_cost & hub's hub_port
          *
-         * @param target_id - id to connect to
-         * @param hub_host - host of the node that will be an intermediate
-         * @param hub_port - port of the node that will be an intermediate
+         * @param target_id id to connect to
+         * @param hub_host host of the node that will be an intermediate
+         * @param hub_port port of the node that will be an intermediate
          */
         void connect_to(const std::string& target_id, const std::string& hub_host, std::uint16_t hub_port);
 
         /**
          * @brief Connects directly to node host:port
          *
-         * @param host - node to connect to 's host
-         * @param port - node to connect to 's port
+         * @param host node to connect to 's host
+         * @param port node to connect to 's port
          */
         void connect_to(const std::string& host, std::uint16_t port);
 
         /**
          * @brief Sends message to all connected nodes
          *
-         * @param message - message to send
+         * @param message message to send
          */
         void broadcast(const Message& message);
 
         /**
          * @brief Sends message to node {id}
          *
-         * @param id - node to send message 's id
-         * @param message - message to send
+         * @param id node to send message 's id
+         * @param message message to send
          */
         void send_message(const std::string& id, const Message& message);
 
@@ -69,7 +69,7 @@ namespace cp2p {
         /**
          * @brief Disconnects from node with id_ == id
          *
-         * @param id - node to disconnect 's id
+         * @param id node to disconnect 's id
          */
         void disconnect(const std::string& id);
 
@@ -88,7 +88,7 @@ namespace cp2p {
         /**
          * @brief sets is_hub value to val
          *
-         * @param val - to set for is_hub
+         * @param val boolean to set for is_hub
          */
         void set_hub(bool val);
 
@@ -109,8 +109,8 @@ namespace cp2p {
          * @brief CALLED ONLY IF is_hub SET TO TRUE \n
          * Sends to server json : { "id" : ..., "host" : ..., "port" : ... }
          *
-         * @param host - server's host
-         * @param port  - server's port
+         * @param host server's host
+         * @param port server's port
          */
         void inform_server(const std::string& host, std::uint16_t port);
 
@@ -118,8 +118,8 @@ namespace cp2p {
          * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
          * so it could connect to target_id via that hub
          *
-         * @param host - server's host
-         * @param port - server's port
+         * @param host server's host
+         * @param port server's port
          * @return hub's info json: { "id": ..., "host": ..., "port": ... }
          */
         json get_hub_data(const std::string& host, std::uint16_t port);

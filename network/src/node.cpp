@@ -76,6 +76,13 @@ namespace cp2p {
         });
     }
 
+    /**
+     * @brief Connects to target_id via hub's hub_cost & hub's hub_port
+     *
+     * @param target_id - id to connect to
+     * @param hub_host host of the node that will be an intermediate
+     * @param hub_port port of the node that will be an intermediate
+     */
     void Node::connect_to(const std::string&, const std::string& hub_host, const std::uint16_t hub_port) {
         json hub = get_hub_data(hub_host, hub_port);
 
@@ -112,10 +119,18 @@ namespace cp2p {
 
                     receive(new_conn);
                     spdlog::info("[Node::connect_to] Connected to {}", id);
+
+                    return true;
                 });
             });
     }
 
+    /**
+     * @brief Connects directly to node host:port
+     *
+     * @param host - node to connect to 's host
+     * @param port - node to connect to 's port
+     */
     void Node::connect_to(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
@@ -148,10 +163,17 @@ namespace cp2p {
 
                     receive(new_conn);
                     spdlog::info("[Node::connect_to] Connected to {}", id);
+
+                    return true;
                 });
             });
     }
 
+    /**
+     * @brief Sends message to all connected nodes
+     *
+     * @param message message to send
+     */
     void Node::broadcast(const Message& message) {
         std::lock_guard lock(mutex_);
 
@@ -160,6 +182,12 @@ namespace cp2p {
         }
     }
 
+    /**
+     * @brief Sends message to node {id}
+     *
+     * @param id node to send message 's id
+     * @param message message to send
+     */
     void Node::send_message(const std::string& id, const Message& message) {
         std::lock_guard lock(mutex_);
         const auto it = connections_.find(id);
@@ -171,19 +199,27 @@ namespace cp2p {
         it->second->deliver(message);
     }
 
+    /**
+     * @brief Disconnects from all connected nodes
+     */
     void Node::disconnect_from_all(const std::function<void()>& on_success) {
-        if (connections_.empty()) {
-            return;
+        if (!connections_.empty()) {
+            for (const auto& id : connections_ | std::views::keys) {
+                disconnect(id);
+            }
+            connections_.clear();
+
+            spdlog::info("Disconnected from all connected nodes");
         }
 
-        for (const auto& id : connections_ | std::views::keys) {
-            disconnect(id);
-        }
-
-        spdlog::info("Disconnected from all connected nodes");
         on_success();
     }
 
+    /**
+     * @brief Disconnects from node with id_ == id
+     *
+     * @param id node to disconnect 's id
+     */
     void Node::disconnect(const std::string& id) {
         if (!connections_.contains(id)) {
             spdlog::error("[Node::disconnect] id: {} not found", id);
@@ -195,7 +231,6 @@ namespace cp2p {
         spdlog::info("[Node::disconnect] Disconnecting...");
         connections_[id]->disconnect(disconnect_message, [this, &id] {
             connections_[id]->close();
-            connections_.erase(id);
         });
     }
 
@@ -209,10 +244,16 @@ namespace cp2p {
         connections_.erase(it);
     }
 
+    /**
+     * @brief Returns self id
+     */
     std::string Node::get_id() const {
         return id_;
     }
 
+    /**
+     * @brief Returns vector of all the node's connections
+     */
     std::vector<std::shared_ptr<Connection>> Node::get_connections() {
         std::vector<std::shared_ptr<Connection>> res;
         for (const auto& conn : connections_ | std::views::values) {
@@ -222,6 +263,11 @@ namespace cp2p {
         return res;
     }
 
+    /**
+     * @brief sets is_hub value to val
+     *
+     * @param val boolean to set for is_hub
+     */
     void Node::set_hub(const bool val) {
         is_hub_ = val;
         if (is_hub_) {
@@ -229,6 +275,12 @@ namespace cp2p {
         }
     }
 
+    /**
+     * @brief Accepts incoming connections \n
+     * method is called from the constructor \n\n
+     *
+     * Creates a new Connection object
+     */
     void Node::accept() {
         auto new_conn = std::make_shared<Connection>(io_context_);
 
@@ -258,15 +310,25 @@ namespace cp2p {
     void Node::receive(const std::shared_ptr<Connection>& conn) {
         conn->start([this, conn](const std::shared_ptr<Message>& msg) {
             if (msg->type() == MessageType::DISCONNECT) {
-                spdlog::info("[Node::receive] Disconnecting...");
-                std::cout << "ASD: " << msg->body() << std::endl;
-                connections_.erase(msg->body());
+                const std::string id = msg->body();
+
+                connections_[id]->close();
+                remove_connection(id);
+
+                spdlog::info("[Node::receive] Disconnected from {}", id);
             } else if (msg->type() == MessageType::TEXT) {
                 spdlog::info("Received [{}]: {}", conn->get_remote_id(), std::string(msg->body(), msg->body_length()));
             }
         });
     }
 
+    /**
+     * @brief CALLED ONLY IF is_hub SET TO TRUE \n
+     * Sends to server json : { "id" : ..., "host" : ..., "port" : ... }
+     *
+     * @param host server's host
+     * @param port server's port
+     */
     void Node::inform_server(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
@@ -311,8 +373,21 @@ namespace cp2p {
         if (ec && ec != beast::errc::not_connected) {
             spdlog::error("[Node::inform_server] socket shutdown failed {}", ec.message());
         }
+
+        ec = stream.socket().close(ec);
+        if (ec && ec != beast::errc::not_connected) {
+            spdlog::error("[Node::get_hub_data] Error {}", ec.message());
+        }
     }
 
+    /**
+     * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
+     * so it could connect to target_id via that hub
+     *
+     * @param host - server's host
+     * @param port - server's port
+     * @return hub's info json: { "id": ..., "host": ..., "port": ... }
+     */
     json Node::get_hub_data(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
         beast::tcp_stream stream(io_context_);
@@ -350,6 +425,11 @@ namespace cp2p {
 
         beast::error_code ec;
         ec = stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+        if (ec && ec != beast::errc::not_connected) {
+            spdlog::error("[Node::get_hub_data] Error {}", ec.message());
+        }
+
+        ec = stream.socket().close(ec);
         if (ec && ec != beast::errc::not_connected) {
             spdlog::error("[Node::get_hub_data] Error {}", ec.message());
         }

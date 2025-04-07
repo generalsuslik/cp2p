@@ -43,18 +43,42 @@ namespace cp2p {
     }
 
     void Connection::disconnect(const Message& handshake, const std::function<void()>& on_success) {
-        deliver(handshake);
-        on_success();
+        auto self = shared_from_this();
+
+        async_write(
+            socket_,
+            asio::buffer(handshake.data(), handshake.size()),
+            [this, on_success](const boost::system::error_code& ec, std::size_t) {
+                if (ec) {
+                    spdlog::error("[Connection::send_message] {}", ec.message());
+                    spdlog::info("Disconnected from {}", remote_id_);
+                    close();
+                    return;
+                }
+
+                spdlog::info("[Connection::disconnect] disconnect {}", remote_id_);
+                on_success();
+            });
     }
 
     void Connection::close() {
-        is_closed_ = true;
-        if (!socket_.is_open()) {
+        if (is_closed_ || !socket_.is_open()) {
             return;
         }
 
-        post(socket_.get_executor(), [this]{
+        is_closed_ = true;
+
+        auto self = shared_from_this();
+
+        post(socket_.get_executor(), [this, self]{
             boost::system::error_code ec;
+
+            ec = socket_.cancel(ec);
+            if (ec) {
+                spdlog::error("[Connection::close] Cancel failed: {}", ec.message());
+            } else {
+                spdlog::info("[Connection::close] Canceled");
+            }
 
             ec = socket_.shutdown(tcp::socket::shutdown_both, ec);
             if (ec) {
@@ -103,16 +127,18 @@ namespace cp2p {
         auto self = shared_from_this();
 
         async_write(socket_,
-            asio::buffer(message_queue_.front()->data(), message_queue_.front()->length()),
+            asio::buffer(message_queue_.front()->data(), message_queue_.front()->size()),
             [this, self](const boost::system::error_code& ec, std::size_t) {
+                if (is_closed_ || ec == asio::error::operation_aborted) {
+                    return;
+                }
+
                 if (ec) {
                     spdlog::error("[Connection::send_message] {}", ec.message());
                     spdlog::info("Disconnected from {}", remote_id_);
                     close();
                     return;
                 }
-
-                spdlog::info("[Connection::send_message] sent {}", message_queue_.front()->body());
 
                 message_queue_.pop_front();
                 if (!message_queue_.empty()) {
@@ -132,6 +158,10 @@ namespace cp2p {
         async_read(socket_,
             asio::buffer(msg->data(), Message::HEADER_LENGTH),
             [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
+                if (is_closed_ || ec == asio::error::operation_aborted) {
+                    return;
+                }
+
                 if (ec || !msg->decode_header()) {
                     if (ec == asio::error::eof) {
                         spdlog::info("[Connection::read_header] Disconnected from {}", remote_id_);
@@ -159,8 +189,12 @@ namespace cp2p {
         async_read(socket_,
             asio::buffer(msg->body(), msg->body_length()),
             [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
+                if (is_closed_ || ec == asio::error::operation_aborted) {
+                    return;
+                }
+
                 if (ec) {
-                    spdlog::error("[Connection::read_header] {}", ec.message());
+                    spdlog::error("[Connection::read_body] {}", ec.message());
                     spdlog::info("Disconnected from {}", remote_id_);
                     close();
                     return;

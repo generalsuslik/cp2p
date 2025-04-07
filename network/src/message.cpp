@@ -125,8 +125,7 @@ namespace cp2p {
     }
 
     std::ostream& operator<<(std::ostream& os, const Message& message) {
-        const auto out =  std::string(message.data(), message.size());
-        os << out;
+        os << std::string(message.data(), message.size());
 
         return os;
     }
