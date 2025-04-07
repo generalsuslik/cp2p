@@ -21,9 +21,9 @@ namespace cp2p {
             , body_(message)
             , body_length_(message.length())
             , header_(message.length(), type) {
-        // std::tie(header_.aes_key, header_.aes_iv) = aes::generate_aes_key_iv();
 
         std::strcpy(data_ + HEADER_LENGTH, message.c_str());
+        body_ = message;
         encode_header();
     }
 
@@ -100,15 +100,6 @@ namespace cp2p {
         iss.read(&message_type_str[0], sizeof(std::underlying_type_t<MessageType>));
         header_.message_type = static_cast<MessageType>(std::stoul(message_type_str));
 
-        // std::vector<unsigned char> aes_key(aes::key_length);
-        // iss.read(reinterpret_cast<char*>(aes_key.data()), aes_key.size());
-        //
-        // std::vector<unsigned char> aes_iv(aes::iv_length);
-        // iss.read(reinterpret_cast<char*>(aes_iv.data()), aes_iv.size());
-        //
-        // header_.aes_key = std::move(aes_key);
-        // header_.aes_iv = std::move(aes_iv);
-
         body_length_ = header_.message_length;
         if (body_length_ > MAX_BODY_LENGTH) {
             body_length_ = 0;
@@ -119,22 +110,12 @@ namespace cp2p {
         return true;
     }
 
-    std::ostream& operator<<(std::ostream& os, const std::vector<unsigned char>& rhs) {
-        for (const auto val : rhs) {
-            os << val;
-        }
-
-        return os;
-    }
-
     void Message::encode_header() {
         std::ostringstream oss;
 
         oss << std::setw(sizeof(header_.message_length)) << std::setfill('0') << header_.message_length;
         oss << std::setw(sizeof(std::underlying_type_t<MessageType>))
                 << std::setfill('0') << static_cast<std::underlying_type_t<MessageType>>(header_.message_type);
-        // oss << std::setw(aes::key_length) << std::setfill('0') << header_.aes_key;
-        // oss << std::setw(aes::iv_length) << std::setfill('0') << header_.aes_iv;
 
         std::memcpy(data_, oss.str().c_str(), HEADER_LENGTH);
     }
@@ -144,7 +125,7 @@ namespace cp2p {
     }
 
     std::ostream& operator<<(std::ostream& os, const Message& message) {
-        os << message.data();
+        os << std::string(message.data(), message.size());
 
         return os;
     }

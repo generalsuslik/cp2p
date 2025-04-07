@@ -31,6 +31,8 @@ namespace cp2p {
 
         void connect(const Message& handshake, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
+        void disconnect(const Message& handshake, const std::function<void()>& on_success);
+
         void close();
 
         std::string get_remote_id() const;
@@ -42,9 +44,9 @@ namespace cp2p {
     private:
         void send_message();
 
-        void read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success = nullptr);
+        void read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
-        void read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success = nullptr);
+        void read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
         void handle_message(const Message& msg);
 
@@ -53,7 +55,8 @@ namespace cp2p {
         MessageQueue<std::shared_ptr<Message>> message_queue_;
 
         std::string remote_id_;
-        bool initialized_;
+        std::atomic<bool> is_initialized_;
+        std::atomic<bool> is_closed_;
     };
 
 } // cp2p

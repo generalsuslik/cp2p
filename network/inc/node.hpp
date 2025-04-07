@@ -19,55 +19,57 @@ namespace cp2p {
 
     class Node : public std::enable_shared_from_this<Node> {
     public:
-        Node(const std::string& host, uint16_t port, bool is_hub = false);
+        Node();
+
+        Node(std::string  host, uint16_t port, bool is_hub = false);
 
         ~Node();
 
         void run();
 
+        void stop();
+
         /**
          * @brief Connects to target_id via hub's hub_cost & hub's hub_port
          *
-         * @param target_id - id to connect to
-         * @param hub_host - host of the node that will be an intermediate
-         * @param hub_port - port of the node that will be an intermediate
+         * @param target_id id to connect to
+         * @param hub_host host of the node that will be an intermediate
+         * @param hub_port port of the node that will be an intermediate
          */
         void connect_to(const std::string& target_id, const std::string& hub_host, std::uint16_t hub_port);
 
         /**
          * @brief Connects directly to node host:port
          *
-         * @param host - node to connect to 's host
-         * @param port - node to connect to 's port
+         * @param host node to connect to 's host
+         * @param port node to connect to 's port
          */
         void connect_to(const std::string& host, std::uint16_t port);
 
         /**
          * @brief Sends message to all connected nodes
          *
-         * @param message - message to send
+         * @param message message to send
          */
         void broadcast(const Message& message);
 
         /**
          * @brief Sends message to node {id}
          *
-         * @param id - node to send message 's id
-         * @param message - message to send
+         * @param id node to send message 's id
+         * @param message message to send
          */
         void send_message(const std::string& id, const Message& message);
-
-        void receive(const std::shared_ptr<Connection>& conn) const;
 
         /**
          * @brief Disconnects from all connected nodes
          */
-        void disconnect_from_all();
+        void disconnect_from_all(const std::function<void()>& on_success);
 
         /**
          * @brief Disconnects from node with id_ == id
          *
-         * @param id - node to disconnect 's id
+         * @param id node to disconnect 's id
          */
         void disconnect(const std::string& id);
 
@@ -86,7 +88,7 @@ namespace cp2p {
         /**
          * @brief sets is_hub value to val
          *
-         * @param val - to set for is_hub
+         * @param val boolean to set for is_hub
          */
         void set_hub(bool val);
 
@@ -99,14 +101,16 @@ namespace cp2p {
          */
         void accept();
 
+        void receive(const std::shared_ptr<Connection>& conn);
+
         json search_node(const std::string& id);
 
         /**
          * @brief CALLED ONLY IF is_hub SET TO TRUE \n
          * Sends to server json : { "id" : ..., "host" : ..., "port" : ... }
          *
-         * @param host - server's host
-         * @param port  - server's port
+         * @param host server's host
+         * @param port server's port
          */
         void inform_server(const std::string& host, std::uint16_t port);
 
@@ -114,8 +118,8 @@ namespace cp2p {
          * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
          * so it could connect to target_id via that hub
          *
-         * @param host - server's host
-         * @param port - server's port
+         * @param host server's host
+         * @param port server's port
          * @return hub's info json: { "id": ..., "host": ..., "port": ... }
          */
         json get_hub_data(const std::string& host, std::uint16_t port);
@@ -132,6 +136,7 @@ namespace cp2p {
         std::mutex mutex_;
 
         bool is_hub_;
+        bool is_active_;
 
         std::string id_;
         std::string host_;

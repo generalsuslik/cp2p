@@ -14,7 +14,7 @@ namespace cp2p {
 
     enum class MessageType : uint32_t {
         HANDSHAKE,
-        APPROVE,
+        ACCEPT,
         DISCONNECT,
         TEXT,
         FILE, // yet not supported
@@ -23,10 +23,8 @@ namespace cp2p {
     class Message {
     public:
         struct message_header {
-            std::size_t message_length = 0;
+            std::uint32_t message_length = 0;
             MessageType message_type = MessageType::TEXT;
-            // std::vector<unsigned char> aes_key;
-            // std::vector<unsigned char> aes_iv;
         };
 
         enum : uint32_t {

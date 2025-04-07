@@ -30,25 +30,25 @@ AES key is used to encrypt the messages, RSA - to encrypt AES key
         ```
 2) In your build directory run:
 ```bash
-./cp2p [<listen_host>] <listen_port>
+./cp2p_build [<listen_host>] <listen_port>
 ```
 
 ### Usage example:
 1) Local network (via wi-fi)
     #### 🖥️ terminal1:
     ```bash
-    ./cp2p 192.168.2.12 1234
+    ./cp2p_build 192.168.2.12 1234
     ```
     #### 🖥️ terminal2:
     ```bash
-    ./cp2p 192.168.2.13 1234
+    ./cp2p_build 192.168.2.13 1234
     ```
 2) On local host:
    #### 🖥️ terminal1:
     ```bash
-    ./cp2p 1234
+    ./cp2p_build 1234
     ```
    #### 🖥️ terminal2:
     ```bash
-    ./cp2p 1234
+    ./cp2p_build 1234
     ```
