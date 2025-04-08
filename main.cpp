@@ -27,8 +27,12 @@ int main(const int argc, char* argv[]) {
         }
 
         cp2p::Node node(host_, port_);
-
-        node.run();
+        std::cout << "Do you want to be a hub?" << std::endl;
+        std::string ans;
+        std::cin >> ans;
+        if (ans == "y") {
+            node.set_hub(true);
+        }
 
         std::string line;
         while (true) {

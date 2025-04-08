@@ -29,6 +29,12 @@ async def send_data(item: Item):
     }
 
 
+@app.delete("/")
+async def send_data(item: Item):
+    if hubs.get(item.id) is not None:
+        hubs.pop(item.id)
+
+
 @app.get("/connect/")
 async def connect():
     if not hubs:

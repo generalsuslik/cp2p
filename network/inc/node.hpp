@@ -8,12 +8,16 @@
 #include "connection.hpp"
 
 #include <boost/asio.hpp>
+#include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
 
 namespace cp2p {
 
     namespace asio = boost::asio;
     using tcp = asio::ip::tcp;
+
+    namespace beast = boost::beast;
+    namespace http = beast::http;
 
     using json = nlohmann::json;
 
@@ -33,18 +37,19 @@ namespace cp2p {
          * @brief Connects to target_id via hub's hub_cost & hub's hub_port
          *
          * @param target_id id to connect to
-         * @param hub_host host of the node that will be an intermediate
-         * @param hub_port port of the node that will be an intermediate
+         * @param server_host host of the node that will be an intermediate
+         * @param server_port port of the node that will be an intermediate
          */
-        void connect_to(const std::string& target_id, const std::string& hub_host, std::uint16_t hub_port);
+        void connect_to(const std::string& target_id, const std::string& server_host, std::uint16_t server_port);
 
         /**
          * @brief Connects directly to node host:port
          *
          * @param host node to connect to 's host
          * @param port node to connect to 's port
+         * @param on_success
          */
-        void connect_to(const std::string& host, std::uint16_t port);
+        void connect_to(const std::string& host, std::uint16_t port, const std::function<void()>& on_success = nullptr);
 
         /**
          * @brief Sends message to all connected nodes
@@ -60,6 +65,15 @@ namespace cp2p {
          * @param message message to send
          */
         void send_message(const std::string& id, const Message& message);
+
+        /**
+         * @brief Sends message to node {id}
+         *
+         * @param id node to send message 's id
+         * @param message message to send
+         * @param on_success callback called after message is sent
+         */
+        void send_message(const std::string& id, const Message& message, const std::function<void()>& on_success);
 
         /**
          * @brief Disconnects from all connected nodes
@@ -105,14 +119,19 @@ namespace cp2p {
 
         json search_node(const std::string& id);
 
+        void connect_to_server(const std::string& host, std::uint16_t port);
+
+        void disconnect_from_server(const std::string& host, std::uint16_t port);
+
         /**
          * @brief CALLED ONLY IF is_hub SET TO TRUE \n
          * Sends to server json : { "id" : ..., "host" : ..., "port" : ... }
          *
          * @param host server's host
          * @param port server's port
+         * @param verb
          */
-        void inform_server(const std::string& host, std::uint16_t port);
+        void inform_server(const std::string& host, std::uint16_t port, http::verb verb);
 
         /**
          * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
