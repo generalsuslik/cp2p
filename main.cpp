@@ -7,7 +7,6 @@
 #include "network/inc/node.hpp"
 
 #include <iostream>
-#include <cstdint>
 
 int main(const int argc, char* argv[]) {
     try {
@@ -18,12 +17,12 @@ int main(const int argc, char* argv[]) {
             port_ = 9000;
         } else {
             host_ = "127.0.0.1";
-            port_ = std::atoi(argv[1]);
+            port_ = std::stoi(argv[1]);
         }
 
         if (argc >= 3) {
             host_ = argv[1];
-            port_ = std::atoi(argv[2]);
+            port_ = std::stoi(argv[2]);
         }
 
         cp2p::Node node(host_, port_);
@@ -89,5 +88,3 @@ int main(const int argc, char* argv[]) {
 
     return 0;
 }
-
-
