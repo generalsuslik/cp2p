@@ -8,6 +8,7 @@
 #include "connection.hpp"
 
 #include <boost/asio.hpp>
+#include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
 
 namespace cp2p {
@@ -15,39 +16,73 @@ namespace cp2p {
     namespace asio = boost::asio;
     using tcp = asio::ip::tcp;
 
+    namespace beast = boost::beast;
+    namespace http = beast::http;
+
     using json = nlohmann::json;
 
+    /**
+     * @brief Represents a node in the network \n
+     * It can be either a hub or general node.
+     *
+     * Hubs allow other nodes to connect to their `passions` via themselves
+     * losing the anonymity.
+     */
     class Node : public std::enable_shared_from_this<Node> {
+    public:
+        using ID = std::string;
+
+    public:
+        struct NodeIdentity {
+            ID id;
+            std::string rsa_public_key;
+            std::string rsa_private_key;
+
+            std::string host;
+            std::uint16_t port;
+
+            std::uint64_t created_at;
+        };
+
     public:
         Node();
 
-        Node(std::string  host, uint16_t port, bool is_hub = false);
+        Node(const std::string& host, uint16_t port, bool is_hub = false);
 
         ~Node();
 
+        /**
+         * @brief Runs the node by creating a thread and running io_context in it
+         */
         void run();
 
+        /**
+         * @brief Stops the node by stopping the io_context and joining the thread
+         *
+         * Also, it sends a disconnect request to the hub's server if is_hub is set to true
+         */
         void stop();
 
         /**
          * @brief Connects to target_id via hub's hub_cost & hub's hub_port
          *
          * @param target_id id to connect to
-         * @param hub_host host of the node that will be an intermediate
-         * @param hub_port port of the node that will be an intermediate
+         * @param server_host host of the node that will be an intermediate
+         * @param server_port port of the node that will be an intermediate
          */
-        void connect_to(const std::string& target_id, const std::string& hub_host, std::uint16_t hub_port);
+        void connect_to(const std::string& target_id, const std::string& server_host, std::uint16_t server_port);
 
         /**
          * @brief Connects directly to node host:port
          *
-         * @param host node to connect to 's host
-         * @param port node to connect to 's port
+         * @param host node-to-connect-to's host
+         * @param port node-to-connect-to's port
+         * @param on_success
          */
-        void connect_to(const std::string& host, std::uint16_t port);
+        void connect_to(const std::string& host, std::uint16_t port, const std::function<void()>& on_success = nullptr);
 
         /**
-         * @brief Sends message to all connected nodes
+         * @brief Sends a message to all connected nodes
          *
          * @param message message to send
          */
@@ -56,10 +91,19 @@ namespace cp2p {
         /**
          * @brief Sends message to node {id}
          *
-         * @param id node to send message 's id
+         * @param id node-to-send-message's id
          * @param message message to send
          */
         void send_message(const std::string& id, const Message& message);
+
+        /**
+         * @brief Sends message to node {id}
+         *
+         * @param id node-to-send-message's id
+         * @param message message to send
+         * @param on_success callback called after a message is sent
+         */
+        void send_message(const std::string& id, const Message& message, const std::function<void()>& on_success);
 
         /**
          * @brief Disconnects from all connected nodes
@@ -67,7 +111,7 @@ namespace cp2p {
         void disconnect_from_all(const std::function<void()>& on_success);
 
         /**
-         * @brief Disconnects from node with id_ == id
+         * @brief Disconnects from the node with id_ == id
          *
          * @param id node to disconnect 's id
          */
@@ -78,7 +122,7 @@ namespace cp2p {
         /**
          * @brief Returns self id
          */
-        std::string get_id() const;
+        ID get_id() const;
 
         /**
          * @brief Returns vector of all the node's connections
@@ -91,6 +135,8 @@ namespace cp2p {
          * @param val boolean to set for is_hub
          */
         void set_hub(bool val);
+
+        static ID generate_id(const std::string &public_key);
 
     private:
         /**
@@ -105,22 +151,27 @@ namespace cp2p {
 
         json search_node(const std::string& id);
 
+        void connect_to_server(const std::string& host, std::uint16_t port);
+
+        void disconnect_from_server(const std::string& host, std::uint16_t port);
+
         /**
          * @brief CALLED ONLY IF is_hub SET TO TRUE \n
-         * Sends to server json : { "id" : ..., "host" : ..., "port" : ... }
+         * Sends to server JSON: { "id": ..., "host": ..., "port": ... }
          *
          * @param host server's host
          * @param port server's port
+         * @param verb
          */
-        void inform_server(const std::string& host, std::uint16_t port);
+        void inform_server(const std::string& host, std::uint16_t port, http::verb verb);
 
         /**
-         * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
+         * @brief When the method Node::connect_to is called, it tries to receive one of the hub's info,
          * so it could connect to target_id via that hub
          *
          * @param host server's host
          * @param port server's port
-         * @return hub's info json: { "id": ..., "host": ..., "port": ... }
+         * @return hub's info JSON: { "id": ..., "host": ..., "port": ... }
          */
         json get_hub_data(const std::string& host, std::uint16_t port);
 
@@ -132,17 +183,13 @@ namespace cp2p {
 
         tcp::acceptor acceptor_;
 
-        std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "public key hash" : conn
+        std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "public key hash": conn
         std::mutex mutex_;
 
-        bool is_hub_;
-        bool is_active_;
+        std::atomic_bool is_hub_;
+        std::atomic_bool is_active_;
 
-        std::string id_;
-        std::string host_;
-        std::uint16_t port_;
-        std::string rsa_public_key_;
-        std::string rsa_private_key_;
+        NodeIdentity identity_;
     };
 
 

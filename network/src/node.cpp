@@ -5,6 +5,7 @@
 #include "../inc/node.hpp"
 
 #include "../../crypto/inc/rsa.hpp"
+#include "../../crypto/inc/util.hpp"
 #include "../../util/inc/util.hpp"
 
 #include <boost/beast.hpp>
@@ -23,15 +24,16 @@ namespace cp2p {
 
     Node::Node() : Node("0.0.0.0", 9000) {}
 
-    Node::Node(std::string host, const std::uint16_t port, const bool is_hub)
+    Node::Node(const std::string& host, const std::uint16_t port, const bool is_hub)
             : acceptor_(io_context_)
             , is_hub_(is_hub)
-            , is_active_(true)
-            , host_(std::move(host))
-            , port_(port) {
-        std::tie(rsa_public_key_, rsa_private_key_) = rsa::generate_rsa_keys();
+            , is_active_(true) {
+        std::tie(identity_.rsa_public_key, identity_.rsa_private_key) = rsa::generate_rsa_keys();
 
-        const tcp::endpoint ep(asio::ip::make_address(host_), port_);
+        identity_.id = std::move(generate_id(identity_.rsa_public_key));
+        std::tie(identity_.host, identity_.port) = std::tie(host, port);
+
+        const tcp::endpoint ep(asio::ip::make_address(identity_.host), identity_.port);
         acceptor_.open(ep.protocol());
 
         boost::system::error_code ec;
@@ -41,9 +43,7 @@ namespace cp2p {
         }
         acceptor_.listen();
 
-        id_ = std::to_string(std::hash<std::string>{}(to_hex(rsa_public_key_.begin(), rsa_public_key_.end())));
-
-        spdlog::info("Initialized with id: {}", id_);
+        spdlog::info("Initialized with id: {}", get_id());
 
         accept();
         run();
@@ -64,7 +64,15 @@ namespace cp2p {
     }
 
     void Node::stop() {
+        if (!is_active_) {
+            return;
+        }
+
         is_active_ = false;
+        if (is_hub_) {
+            disconnect_from_server("127.0.0.1", 8080);
+            is_hub_ = false;
+        }
 
         disconnect_from_all([this] {
             acceptor_.close();
@@ -77,61 +85,33 @@ namespace cp2p {
     }
 
     /**
-     * @brief Connects to target_id via hub's hub_cost & hub's hub_port
+     * @brief Connects to target_id via hub's hub_host & hub's hub_port
      *
-     * @param target_id - id to connect to
-     * @param hub_host host of the node that will be an intermediate
-     * @param hub_port port of the node that will be an intermediate
+     * @param target_id id to connect to
+     * @param server_host host of the node that will be an intermediate
+     * @param server_port port of the node that will be an intermediate
      */
-    void Node::connect_to(const std::string&, const std::string& hub_host, const std::uint16_t hub_port) {
-        json hub = get_hub_data(hub_host, hub_port);
+    void Node::connect_to(const std::string& target_id, const std::string& server_host, const std::uint16_t server_port) {
+        json hub = get_hub_data(server_host, server_port);
 
-        tcp::resolver resolver(io_context_);
-        const auto endpoints = resolver.resolve(
-            hub["host"].get<std::string>(),
-            hub["port"].get<std::string>()
-        );
+        const std::string hub_id = hub["node_id"].get<std::string>();
+        const std::string hub_host = hub["host"].get<std::string>();
+        const std::uint16_t hub_port = hub["port"].get<std::uint16_t>();
 
-        auto new_conn = std::make_shared<Connection>(io_context_);
-        if (!new_conn->socket().is_open()) {
-            new_conn->socket().open(tcp::v4());
-            spdlog::info("[Node::connect_to] Opened socket");
-        }
-
-        async_connect(new_conn->socket(), endpoints,
-            [this, new_conn](const boost::system::error_code& ec, const tcp::endpoint&) {
-                if (ec) {
-                    spdlog::error("[Node::connect_to] Error {}", ec.message());
-                    return;
-                }
-
-                const Message handshake(id_, MessageType::HANDSHAKE);
-
-                new_conn->connect(handshake, [this, new_conn](const std::shared_ptr<Message>& msg) {
-                    const std::string id = msg->body();
-
-                    new_conn->set_remote_id(id);
-
-                    {
-                        std::lock_guard lock(mutex_);
-                        connections_[id] = new_conn;
-                    }
-
-                    receive(new_conn);
-                    spdlog::info("[Node::connect_to] Connected to {}", id);
-
-                    return true;
-                });
-            });
+        connect_to(hub_host, hub_port, [this, hub_id, target_id] {
+            const Message search_node_message(target_id, MessageType::SEARCH);
+            send_message(hub_id, search_node_message);
+        });
     }
 
     /**
      * @brief Connects directly to node host:port
      *
-     * @param host - node to connect to 's host
-     * @param port - node to connect to 's port
+     * @param host node-to-connect-to's host
+     * @param port node-to-connect-to's port
+     * @param on_success just a callback to be executed right after connection (maybe nullptr)
      */
-    void Node::connect_to(const std::string& host, const std::uint16_t port) {
+    void Node::connect_to(const std::string& host, const std::uint16_t port, const std::function<void()>& on_success) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
@@ -142,15 +122,16 @@ namespace cp2p {
         }
 
         async_connect(new_conn->socket(), endpoints,
-            [this, new_conn](const boost::system::error_code& ec, const tcp::endpoint&) {
+            [this, new_conn, on_success](const boost::system::error_code& ec, const tcp::endpoint&) {
                 if (ec) {
                     spdlog::error("[Node::connect_to] Error {}", ec.message());
                     return;
                 }
 
-                const Message handshake(id_, MessageType::HANDSHAKE);
+                const Message handshake(get_id(), MessageType::HANDSHAKE);
 
-                new_conn->connect(handshake, [this, new_conn](const std::shared_ptr<Message>& msg) {
+                new_conn->connect(handshake,
+                        [this, new_conn, on_success](const std::shared_ptr<Message>& msg) {
                     // processing ACCEPT msg
                     const std::string id = msg->body();
 
@@ -164,13 +145,15 @@ namespace cp2p {
                     receive(new_conn);
                     spdlog::info("[Node::connect_to] Connected to {}", id);
 
-                    return true;
+                    if (on_success) {
+                        on_success();
+                    }
                 });
             });
     }
 
     /**
-     * @brief Sends message to all connected nodes
+     * @brief Sends a message to all connected nodes
      *
      * @param message message to send
      */
@@ -185,11 +168,12 @@ namespace cp2p {
     /**
      * @brief Sends message to node {id}
      *
-     * @param id node to send message 's id
+     * @param id node-to-send-a-message's id
      * @param message message to send
      */
     void Node::send_message(const std::string& id, const Message& message) {
         std::lock_guard lock(mutex_);
+
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
             spdlog::error("[Node::send_message] id: {} not found", id);
@@ -199,10 +183,25 @@ namespace cp2p {
         it->second->deliver(message);
     }
 
+    void Node::send_message(const std::string& id, const Message& message, const std::function<void()>& on_success) {
+        std::lock_guard lock(mutex_);
+
+        const auto it = connections_.find(id);
+        if (it == connections_.end()) {
+            spdlog::error("[Node::send_message] id: {} not found", id);
+            return;
+        }
+
+        it->second->deliver(message);
+        on_success();
+    }
+
     /**
      * @brief Disconnects from all connected nodes
      */
     void Node::disconnect_from_all(const std::function<void()>& on_success) {
+        std::lock_guard lock(mutex_);
+
         if (!connections_.empty()) {
             for (const auto& id : connections_ | std::views::keys) {
                 disconnect(id);
@@ -216,7 +215,7 @@ namespace cp2p {
     }
 
     /**
-     * @brief Disconnects from node with id_ == id
+     * @brief Disconnects from the node with id_ == id
      *
      * @param id node to disconnect 's id
      */
@@ -226,7 +225,7 @@ namespace cp2p {
             return;
         }
 
-        const Message disconnect_message(id_, MessageType::DISCONNECT);
+        const Message disconnect_message(get_id(), MessageType::DISCONNECT);
 
         spdlog::info("[Node::disconnect] Disconnecting...");
         connections_[id]->disconnect(disconnect_message, [this, &id] {
@@ -247,8 +246,8 @@ namespace cp2p {
     /**
      * @brief Returns self id
      */
-    std::string Node::get_id() const {
-        return id_;
+    Node::ID Node::get_id() const {
+        return identity_.id;
     }
 
     /**
@@ -270,9 +269,16 @@ namespace cp2p {
      */
     void Node::set_hub(const bool val) {
         is_hub_ = val;
+
         if (is_hub_) {
-            inform_server("127.0.0.1", 8080);
+            connect_to_server("127.0.0.1", 8080);
+        } else {
+            disconnect_from_server("127.0.0.1", 8080);
         }
+    }
+
+    Node::ID Node::generate_id(const std::string& public_key) {
+        return crypto::md5_hash(public_key);
     }
 
     /**
@@ -295,7 +301,7 @@ namespace cp2p {
                             connections_[new_conn->get_remote_id()] = new_conn;
                         }
 
-                        const Message approve(id_, MessageType::ACCEPT);
+                        const Message approve(get_id(), MessageType::ACCEPT);
                         new_conn->deliver(approve);
 
                         spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
@@ -318,18 +324,30 @@ namespace cp2p {
                 spdlog::info("[Node::receive] Disconnected from {}", id);
             } else if (msg->type() == MessageType::TEXT) {
                 spdlog::info("Received [{}]: {}", conn->get_remote_id(), std::string(msg->body(), msg->body_length()));
+            } else if (msg->type() == MessageType::SEARCH) {
+                spdlog::info("search");
+                std::cout << *msg << std::endl;
             }
         });
     }
 
+    void Node::connect_to_server(const std::string& host, const std::uint16_t port) {
+        inform_server(host, port, http::verb::post);
+    }
+
+    void Node::disconnect_from_server(const std::string& host, const std::uint16_t port) {
+        inform_server(host, port, http::verb::delete_);
+    }
+
     /**
      * @brief CALLED ONLY IF is_hub SET TO TRUE \n
-     * Sends to server json : { "id" : ..., "host" : ..., "port" : ... }
+     * Sends to server JSON: { "id": ..., "host": ..., "port": ... }
      *
      * @param host server's host
      * @param port server's port
+     * @param verb post/delete self info from remote server (http::verb::post / http::verb::delete_)
      */
-    void Node::inform_server(const std::string& host, const std::uint16_t port) {
+    void Node::inform_server(const std::string& host, const std::uint16_t port, http::verb verb) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
@@ -337,13 +355,12 @@ namespace cp2p {
         stream.connect(endpoints);
 
         const json payload = {
-            { "id", id_ },
-            { "host", host_ },
-            { "port", port_ },
+            { "id", get_id() },
+            { "host", identity_.host },
+            { "port", identity_.port },
         };
-        spdlog::info("Payload dump: {}", payload.dump());
 
-        http::request<http::string_body> req(http::verb::post, "/", 11);
+        http::request<http::string_body> req(verb, "/", 11);
         req.set(http::field::host, host);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
         req.set(http::field::content_type, "application/json");
@@ -360,7 +377,7 @@ namespace cp2p {
             auto location = res[http::field::location];
             spdlog::info("[Redirecting to] {}", location);
 
-            // Extract new path from the location header
+            // Extract a new path from the location header
             std::string new_path = location.substr(location.find("/", 7));  // Remove "http://127.0.0.1:8080"
 
             req.target(new_path);
@@ -381,12 +398,12 @@ namespace cp2p {
     }
 
     /**
-     * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
+     * @brief When the method Node::connect_to is called, it tries to receive one of the hub's info,
      * so it could connect to target_id via that hub
      *
      * @param host - server's host
      * @param port - server's port
-     * @return hub's info json: { "id": ..., "host": ..., "port": ... }
+     * @return hub's info JSON: { "id": ..., "host": ..., "port": ... }
      */
     json Node::get_hub_data(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
@@ -409,7 +426,7 @@ namespace cp2p {
             auto location = res[http::field::location];
             spdlog::info("[Redirecting to] {}", location);
 
-            // Extract new path from the location header
+            // Extract a new path from the location header
             std::string new_path = location.substr(location.find("/", 7));  // Remove "http://127.0.0.1:8080"
 
             req.target(new_path);

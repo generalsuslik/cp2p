@@ -16,9 +16,9 @@ namespace cp2p::aes {
     /**
      * @brief Generates a random AES-256 key and a 128-bit IV.
      *
-     * @return A std::pair where:
-     *         - first  : A vector of unsigned char containing a 32-byte AES key.
-     *         - second : A vector of unsigned char containing a 16-byte IV.
+     * @return a std::pair where:
+     *         - first: A vector of unsigned char containing a 32-byte AES key.
+     *         - second: A vector of unsigned char containing a 16-byte IV.
      *
      * @throws std::runtime_error if key or IV generation fails.
      */

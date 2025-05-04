@@ -13,11 +13,13 @@
 namespace cp2p {
 
     enum class MessageType : uint32_t {
-        HANDSHAKE,
         ACCEPT,
         DISCONNECT,
-        TEXT,
         FILE, // yet not supported
+        HANDSHAKE,
+        SEARCH,
+        SEARCH_RESPONSE,
+        TEXT,
     };
 
     class Message {

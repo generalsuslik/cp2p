@@ -32,3 +32,6 @@
 *.app
 
 .idea
+server/.env
+cmake-build-debug
+build
