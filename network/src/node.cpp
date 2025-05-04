@@ -5,6 +5,7 @@
 #include "../inc/node.hpp"
 
 #include "../../crypto/inc/rsa.hpp"
+#include "../../crypto/inc/util.hpp"
 #include "../../util/inc/util.hpp"
 
 #include <boost/beast.hpp>
@@ -172,6 +173,7 @@ namespace cp2p {
      */
     void Node::send_message(const std::string& id, const Message& message) {
         std::lock_guard lock(mutex_);
+
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
             spdlog::error("[Node::send_message] id: {} not found", id);
@@ -183,6 +185,7 @@ namespace cp2p {
 
     void Node::send_message(const std::string& id, const Message& message, const std::function<void()>& on_success) {
         std::lock_guard lock(mutex_);
+
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
             spdlog::error("[Node::send_message] id: {} not found", id);
@@ -197,6 +200,8 @@ namespace cp2p {
      * @brief Disconnects from all connected nodes
      */
     void Node::disconnect_from_all(const std::function<void()>& on_success) {
+        std::lock_guard lock(mutex_);
+
         if (!connections_.empty()) {
             for (const auto& id : connections_ | std::views::keys) {
                 disconnect(id);
@@ -264,6 +269,7 @@ namespace cp2p {
      */
     void Node::set_hub(const bool val) {
         is_hub_ = val;
+
         if (is_hub_) {
             connect_to_server("127.0.0.1", 8080);
         } else {
@@ -271,8 +277,8 @@ namespace cp2p {
         }
     }
 
-    Node::ID Node::generate_id(const std::string &public_key) {
-        return to_hex(public_key.begin(), public_key.end());
+    Node::ID Node::generate_id(const std::string& public_key) {
+        return crypto::md5_hash(public_key);
     }
 
     /**
@@ -392,12 +398,12 @@ namespace cp2p {
     }
 
     /**
-     * @brief When method Node::connect_to is called, it tries to receive one of the hub's info,
+     * @brief When the method Node::connect_to is called, it tries to receive one of the hub's info,
      * so it could connect to target_id via that hub
      *
      * @param host - server's host
      * @param port - server's port
-     * @return hub's info json: { "id": ..., "host": ..., "port": ... }
+     * @return hub's info JSON: { "id": ..., "host": ..., "port": ... }
      */
     json Node::get_hub_data(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
@@ -420,7 +426,7 @@ namespace cp2p {
             auto location = res[http::field::location];
             spdlog::info("[Redirecting to] {}", location);
 
-            // Extract new path from the location header
+            // Extract a new path from the location header
             std::string new_path = location.substr(location.find("/", 7));  // Remove "http://127.0.0.1:8080"
 
             req.target(new_path);

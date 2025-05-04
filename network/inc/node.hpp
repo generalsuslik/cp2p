@@ -22,7 +22,7 @@ namespace cp2p {
     using json = nlohmann::json;
 
     /**
-     * @brief Represents node in the network \n
+     * @brief Represents a node in the network \n
      * It can be either a hub or general node.
      *
      * Hubs allow other nodes to connect to their `passions` via themselves
@@ -186,8 +186,8 @@ namespace cp2p {
         std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "public key hash": conn
         std::mutex mutex_;
 
-        bool is_hub_;
-        bool is_active_;
+        std::atomic_bool is_hub_;
+        std::atomic_bool is_active_;
 
         NodeIdentity identity_;
     };
