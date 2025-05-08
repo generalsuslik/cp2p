@@ -7,7 +7,7 @@
 #include <algorithm>
 
 std::string random_string(const std::size_t max_len) {
-    const std::size_t len = rand() % max_len + 1;
+    const std::size_t len = std::rand() % max_len + 1;
     const std::string alphanum =
         "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
