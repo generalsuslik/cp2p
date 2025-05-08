@@ -28,9 +28,7 @@ namespace cp2p {
             : acceptor_(io_context_)
             , is_hub_(is_hub)
             , is_active_(true) {
-        std::tie(identity_.rsa_public_key, identity_.rsa_private_key) = rsa::generate_rsa_keys();
-
-        identity_.id = std::move(generate_id(identity_.rsa_public_key));
+        identity_.id = std::move(generate_id(identity_.rsa.to_public_string()));
         std::tie(identity_.host, identity_.port) = std::tie(host, port);
 
         const tcp::endpoint ep(asio::ip::make_address(identity_.host), identity_.port);
@@ -77,11 +75,11 @@ namespace cp2p {
         disconnect_from_all([this] {
             acceptor_.close();
             io_context_.stop();
-
-            if (io_thread_.joinable()) {
-                io_thread_.join();
-            }
         });
+
+        if (io_thread_.joinable()) {
+            io_thread_.join();
+        }
     }
 
     /**
