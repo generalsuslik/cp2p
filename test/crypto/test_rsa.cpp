@@ -3,60 +3,22 @@
 //
 
 #include <gtest/gtest.h>
-#include <openssl/evp.h>
 
 #include "../../crypto/inc/rsa.hpp"
+#include "../test_util/test_util.hpp"
 
-TEST(RSAConvertions, test_public_key_convertion) {
-    const auto& [public_key_str, _] = cp2p::rsa::generate_rsa_keys();
+TEST(RSA, test_rsa_encoding) {
+    using namespace cp2p;
 
-    EVP_PKEY* public_key = cp2p::rsa::to_public_key(public_key_str);
-    const std::string converted_public_key_str = cp2p::rsa::to_public_string(public_key);
-    EVP_PKEY* converted_public_key = cp2p::rsa::to_public_key(converted_public_key_str);
-    const std::string converted_x2_public_key_str = cp2p::rsa::to_public_string(converted_public_key);
+    rsa::RSAKeyPair rsa;
+    const std::string random_string = ::random_string(214);
 
-    assert(public_key_str == converted_public_key_str);
-    assert(public_key_str == converted_x2_public_key_str);
-    assert(public_key && converted_public_key && cp2p::rsa::to_public_key(converted_x2_public_key_str));
-    assert(EVP_PKEY_eq(public_key, converted_public_key) == 1);
-    assert(EVP_PKEY_eq(public_key, cp2p::rsa::to_public_key(converted_x2_public_key_str)));
+    std::vector<unsigned char> encrypted = rsa.encrypt(random_string.begin(), random_string.end());
+    std::vector<unsigned char> decrypted = rsa.decrypt(encrypted.begin(), encrypted.end());
+    const std::string decrypted_str(decrypted.begin(), decrypted.end());
 
-    EVP_PKEY_free(public_key);
-    EVP_PKEY_free(converted_public_key);
+    ASSERT_FALSE(decrypted_str.empty());
+    ASSERT_TRUE(decrypted_str == random_string);
 }
 
-TEST(RSAConvertions, test_private_key_convertion) {
-    const auto& [_, private_key_str] = cp2p::rsa::generate_rsa_keys();
-
-    EVP_PKEY* private_key = cp2p::rsa::to_private_key(private_key_str);
-    const std::string converted_private_key_str = cp2p::rsa::to_private_string(private_key);
-    EVP_PKEY* converted_private_key = cp2p::rsa::to_private_key(converted_private_key_str);
-    const std::string converted_x2_private_key_str = cp2p::rsa::to_private_string(converted_private_key);
-
-    assert(private_key && converted_private_key && cp2p::rsa::to_private_key(converted_x2_private_key_str));
-    assert(EVP_PKEY_eq(private_key, converted_private_key) == 1);
-    assert(EVP_PKEY_eq(private_key, cp2p::rsa::to_private_key(converted_x2_private_key_str)));
-
-    EVP_PKEY_free(private_key);
-    EVP_PKEY_free(converted_private_key);
-}
-
-TEST(RSAConvertions, test_public_private_key_conversion_integrity) {
-    const auto& [public_key_str, private_key_str] = cp2p::rsa::generate_rsa_keys();
-
-    EVP_PKEY* public_key = cp2p::rsa::to_public_key(public_key_str);
-    EVP_PKEY* private_key = cp2p::rsa::to_private_key(private_key_str);
-
-    const std::string converted_public_key_str = cp2p::rsa::to_public_string(public_key);
-    const std::string converted_private_key_str = cp2p::rsa::to_private_string(private_key);
-
-    assert(public_key && cp2p::rsa::to_public_key(converted_public_key_str));
-    assert(EVP_PKEY_eq(public_key, cp2p::rsa::to_public_key(converted_public_key_str)) == 1);
-
-    assert(private_key && cp2p::rsa::to_private_key(converted_private_key_str));
-    assert(EVP_PKEY_eq(private_key, cp2p::rsa::to_private_key(converted_private_key_str)) == 1);
-
-    EVP_PKEY_free(public_key);
-    EVP_PKEY_free(private_key);
-}
 

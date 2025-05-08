@@ -7,6 +7,8 @@
 
 #include "connection.hpp"
 
+#include "../../crypto/inc/rsa.hpp"
+
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
@@ -35,8 +37,7 @@ namespace cp2p {
     public:
         struct NodeIdentity {
             ID id;
-            std::string rsa_public_key;
-            std::string rsa_private_key;
+            rsa::RSAKeyPair rsa;
 
             std::string host;
             std::uint16_t port;

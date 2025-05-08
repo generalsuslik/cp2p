@@ -55,8 +55,8 @@ namespace cp2p {
         MessageQueue<std::shared_ptr<Message>> message_queue_;
 
         std::string remote_id_;
-        std::atomic<bool> is_initialized_;
-        std::atomic<bool> is_closed_;
+        std::atomic_bool is_initialized_;
+        std::atomic_bool is_closed_;
     };
 
 } // cp2p

@@ -11,38 +11,38 @@
 TEST(AES_RSA, aes_rsa_integrity) {
     using namespace cp2p;
 
+    rsa::RSAKeyPair rsa;
+    const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
     const std::string plaintext = random_string();
 
-    const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
-    const auto& [public_rsa, private_rsa] = rsa::generate_rsa_keys();
+    // Encrypting random plain text
+    const std::vector<std::uint8_t> ciphertext = aes::aes_encrypt(plaintext, aes_key, aes_iv);
 
-    // Encrypting plaintext with AES
-    const std::vector<unsigned char> ciphertext = aes::aes_encrypt(plaintext, aes_key, aes_iv);
-
-    // Serializing AES for the encryption
-    std::vector<unsigned char> aes;
-    for (const auto ch : aes_key) {
-        aes.push_back(ch);
+    // Creating an array to store and forward aes data
+    std::vector<std::uint8_t> aes;
+    for (const auto& byte : aes_key) {
+        aes.push_back(byte);
     }
     aes.push_back(' ');
-    for (const auto ch : aes_iv) {
-        aes.push_back(ch);
+    for (const auto& byte : aes_iv) {
+        aes.push_back(byte);
     }
 
     // Encrypting AES
-    const std::vector<unsigned char> encrypted_aes = rsa::rsa_encrypt(rsa::to_public_key(public_rsa), aes);
+    const std::vector<std::uint8_t> encrypted_aes = rsa.encrypt(aes.begin(), aes.end());
 
-    // ... Imagine AES and ciphertext are being sent through the network
+    // ... Imagine AES and ciphertext are being sent (and received) through the network
 
     // Decrypting AES
-    const std::vector<unsigned char> decrypted_aes = rsa::rsa_decrypt(rsa::to_private_key(private_rsa), encrypted_aes);
+    const std::vector<std::uint8_t> decrypted_aes = rsa.decrypt(encrypted_aes.begin(), encrypted_aes.end());
 
     // Deserializing AES for the decryption
     const auto it = std::ranges::find(decrypted_aes, ' ');
-    const std::vector<unsigned char> encrypted_aes_key(decrypted_aes.begin(), it);
-    const std::vector<unsigned char> decrypted_aes_iv(it + 1, decrypted_aes.end());
+    const std::vector<std::uint8_t> decrypted_aes_key(decrypted_aes.begin(), it);
+    const std::vector<std::uint8_t> decrypted_aes_iv(it + 1, decrypted_aes.end());
 
-    const std::string decrypted_text = aes::aes_decrypt(ciphertext, encrypted_aes_key, decrypted_aes_iv);
+    const std::string decrypted_plaintext = aes::aes_decrypt(ciphertext, decrypted_aes_key, decrypted_aes_iv);
 
-    assert(decrypted_text == plaintext);
+    ASSERT_FALSE(decrypted_aes.empty());
+    ASSERT_TRUE(decrypted_plaintext == plaintext);
 }

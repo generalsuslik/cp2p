@@ -3,7 +3,7 @@ project(cp2p_build VERSION 1.0.1)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -pipe")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -fsanitize=address")
 
 #-----Clang-tidy-----#
@@ -62,6 +62,8 @@ set(SOURCES
         crypto/inc/aes.hpp
         crypto/src/rsa.cpp
         crypto/inc/rsa.hpp
+        crypto/src/util.cpp
+        crypto/inc/util.hpp
 
         network/src/node.cpp
         network/inc/node.hpp
@@ -77,8 +79,6 @@ set(SOURCES
         util/inc/util.hpp
 
         include/cp2p.hpp
-        crypto/src/util.cpp
-        crypto/inc/util.hpp
 )
 
 add_executable(${PROJECT_NAME}
@@ -88,7 +88,7 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME}
-        PRIVATE
+    PRIVATE
         Boost::system
         OpenSSL::SSL
         OpenSSL::Crypto
@@ -99,52 +99,48 @@ target_link_libraries(${PROJECT_NAME}
 find_package(GTest REQUIRED)
 include(GoogleTest)
 
+find_package(fmt REQUIRED)
+
 enable_testing()
 
 add_executable(tests
-        crypto/src/rsa.cpp
-        crypto/inc/rsa.hpp
-
-        crypto/src/aes.cpp
-        crypto/inc/aes.hpp
-
-        crypto/src/util.cpp
-        crypto/inc/util.hpp
-
-        network/src/message.cpp
-        network/inc/message.hpp
-
-        util/inc/util.hpp
+        ${SOURCES}
 
         test/crypto/test_aes.cpp
+        test/crypto/test_aes_rsa_integrity.cpp
         test/test_util/test_util.cpp
         test/test_util/test_util.hpp
         test/network/test_message.cpp
+        test/crypto/test_rsa.cpp
         test/crypto/test_util.cpp
 )
 target_link_libraries(tests
+    PRIVATE
         GTest::GTest
         GTest::Main
         OpenSSL::SSL
         OpenSSL::Crypto
+        fmt::fmt
 )
+
+target_compile_options(tests PRIVATE -g)
 
 gtest_discover_tests(tests)
 
 #---Library stuff---#
 set(LIBRARY cp2p)
 add_library(${LIBRARY}
-        SHARED
+    SHARED
         ${SOURCES}
 )
 
 target_include_directories(${LIBRARY}
-        PUBLIC
+    PUBLIC
         ${CMAKE_SOURCE_DIR}/include
 )
 
 target_link_libraries(${LIBRARY}
-        PRIVATE
+    PRIVATE
         Boost::system
         OpenSSL::SSL
         OpenSSL::Crypto

@@ -7,6 +7,6 @@
 
 #include <random>
 
-std::string random_string(std::size_t len = std::rand() % 1025);
+std::string random_string(std::size_t max_len = std::rand() % 1025 + 1);
 
 #endif //TEST_UTIL_HPP
