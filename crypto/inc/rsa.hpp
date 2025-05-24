@@ -19,6 +19,13 @@ namespace cp2p::rsa {
     constexpr int k_bits = 2048;
     constexpr int k_bytes = k_bits / 8;
 
+    /**
+     * @class RSAKeyPair
+     * @brief Represents an RSA key pair consisting of a public and private key for cryptographic purposes.
+     *
+     * The RSAKeyPair class provides functionality to generate RSA key pairs, retrieve the public and private keys,
+     * and perform basic key-related operations.
+     */
     class RSAKeyPair {
     public:
         explicit RSAKeyPair(int bits = k_bits);
@@ -31,10 +38,30 @@ namespace cp2p::rsa {
 
         ~RSAKeyPair();
 
+        /**
+         * @brief
+         *
+         * @return raw pointer to the key
+         */
         [[nodiscard]]
         EVP_PKEY* get() const;
 
-        template <std::random_access_iterator It>
+        /*
+         * RSAKeyPair::encrypt and RSAKeyPair::decrypt functions are defined right there, in the
+         * .hpp file because of the templates
+         */
+
+        /**
+         * @brief Encrypts the collection from begin to end.
+         *
+         * Note that a collection must support contiguous iterators
+         *
+         * @tparam It contiguous iterator for the collection to encrypt (std::vector or std::string)
+         * @param begin begin iterator of the collection to encrypt
+         * @param end end iterator of the collection to encrypt
+         * @return vector of 1-byte symbols; contains cyphertext
+         */
+        template <std::contiguous_iterator It>
         std::vector<std::uint8_t> encrypt(It begin, It end) {
             const std::size_t plaintext_len = std::distance(begin, end);
             const auto* data = reinterpret_cast<const std::uint8_t*>(&*begin);
@@ -69,6 +96,16 @@ namespace cp2p::rsa {
             return encrypted;
         }
 
+        /**
+         * @brief Decrypts the collection from begin to end.
+         *
+         * Note that a collection must support contiguous iterators
+         *
+         * @tparam It contiguous iterator for the collection to decrypt (std::vector or std::string)
+         * @param begin begin iterator of the collection to decrypt
+         * @param end end iterator of the collection to decrypt
+         * @return vector of 1-byte symbols; contains plaintext
+         */
         template <std::contiguous_iterator It>
         std::vector<std::uint8_t> decrypt(It begin, It end) {
             const std::size_t ciphertext_len = std::distance(begin, end);
@@ -92,13 +129,28 @@ namespace cp2p::rsa {
             return decrypted;
         }
 
+        /**
+         * @brief Gets public key from EVP_PKEY* and converts it to std::string
+         *
+         * @return public RSA key as a string
+         */
         [[nodiscard]]
         std::string to_public_string() const;
 
+        /**
+         * @brief Gets private key from EVP_PKEY* and converts it to std::string
+         *
+         * @return private RSA key as a string
+         */
         [[nodiscard]]
         std::string to_private_string() const;
 
     private:
+        /**
+         * @brief Generates an RSA key pair and sets it to pkey
+         *
+         * @param bits sizeof keygen rsa key
+         */
         void generate_pair(int bits);
 
     private:

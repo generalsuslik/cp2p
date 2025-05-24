@@ -12,6 +12,11 @@
 namespace cp2p {
 
 
+    /**
+     * @brief Thread-safe message queue
+     *
+     * @tparam T type of data to pass via queue (Message, std::string)
+     */
     template <typename T>
     class MessageQueue {
     public:

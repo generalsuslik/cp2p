@@ -50,7 +50,7 @@ namespace cp2p {
             asio::buffer(handshake.data(), handshake.size()),
             [this, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
-                    spdlog::error("[Connection::send_message] {}", ec.message());
+                    spdlog::error("[Connection::disconnect] {}", ec.message());
                     spdlog::info("Disconnected from {}", remote_id_);
                     close();
                     return;
@@ -145,6 +145,10 @@ namespace cp2p {
                     send_message();
                 }
             });
+    }
+
+    bool Connection::is_open() const {
+        return !is_closed_;
     }
 
     void Connection::read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {

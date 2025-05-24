@@ -22,11 +22,16 @@ namespace cp2p {
         TEXT,
     };
 
+    /**
+     * @class Message
+     * @brief The Message class is a representation of a communication or notification.
+     */
     class Message {
     public:
         struct message_header {
             std::uint32_t message_length = 0;
             MessageType message_type = MessageType::TEXT;
+            std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
         };
 
         enum : uint32_t {

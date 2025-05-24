@@ -27,7 +27,7 @@ namespace cp2p {
     Node::Node(const std::string& host, const std::uint16_t port, const bool is_hub)
             : acceptor_(io_context_)
             , is_hub_(is_hub)
-            , is_active_(true) {
+            , is_active_(false) {
         identity_.id = std::move(generate_id(identity_.rsa.to_public_string()));
         std::tie(identity_.host, identity_.port) = std::tie(host, port);
 
@@ -52,9 +52,11 @@ namespace cp2p {
     }
 
     void Node::run() {
-        if (io_thread_.joinable()) {
+        if (io_thread_.joinable() && is_active_) {
             return;
         }
+
+        is_active_ = true;
 
         io_thread_ = std::thread([this] {
             io_context_.run();
@@ -75,11 +77,11 @@ namespace cp2p {
         disconnect_from_all([this] {
             acceptor_.close();
             io_context_.stop();
-        });
 
-        if (io_thread_.joinable()) {
-            io_thread_.join();
-        }
+            if (io_thread_.joinable()) {
+                io_thread_.join();
+            }
+        });
     }
 
     /**
@@ -204,6 +206,7 @@ namespace cp2p {
             for (const auto& id : connections_ | std::views::keys) {
                 disconnect(id);
             }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
             connections_.clear();
 
             spdlog::info("Disconnected from all connected nodes");
