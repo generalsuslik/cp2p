@@ -10,7 +10,6 @@
 #include <openssl/rsa.h>
 
 #include <stdexcept>
-#include <vector>
 
 namespace cp2p::rsa {
 
@@ -26,6 +25,11 @@ namespace cp2p::rsa {
     EVP_PKEY* RSAKeyPair::get() const {
         return pkey_.get();
     }
+
+    /*
+     * RSAKeyPair::encrypt and RSAKeyPair::decrypt functions are defined in the
+     * .hpp file because of the templates
+     */
 
     std::string RSAKeyPair::to_public_string() const {
         BIO* bio = BIO_new(BIO_s_mem());
@@ -73,17 +77,22 @@ namespace cp2p::rsa {
 
     void RSAKeyPair::generate_pair(const int bits) {
         const EVP_CTX_ptr ctx(EVP_PKEY_CTX_new_from_name(nullptr, "RSA", nullptr), EVP_PKEY_CTX_free);
-        if (!ctx) throw std::runtime_error("Failed to create EVP_PKEY_CTX");
+        if (!ctx) {
+            throw std::runtime_error("Failed to create EVP_PKEY_CTX");
+        }
 
-        if (EVP_PKEY_keygen_init(ctx.get()) <= 0)
+        if (EVP_PKEY_keygen_init(ctx.get()) <= 0) {
             throw std::runtime_error("EVP_PKEY_keygen_init failed");
+        }
 
-        if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits) <= 0)
+        if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits) <= 0) {
             throw std::runtime_error("Failed to set RSA key bits");
+        }
 
         EVP_PKEY* raw_pkey = nullptr;
-        if (EVP_PKEY_generate(ctx.get(), &raw_pkey) <= 0)
+        if (EVP_PKEY_generate(ctx.get(), &raw_pkey) <= 0) {
             throw std::runtime_error("RSA key generation failed");
+        }
 
         pkey_.reset(raw_pkey);
     }

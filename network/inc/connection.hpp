@@ -17,6 +17,21 @@ namespace cp2p {
     namespace asio = boost::asio;
     using tcp = asio::ip::tcp;
 
+    /**
+     * @class Connection
+     *
+     * @brief Represents a connection between 2 nodes.
+     *
+     * This class is used to establish, manage, and terminate connections
+     * between nodes.
+     *
+     * Key operations include connection establishment, data sending and
+     * receiving, disconnection, and error handling.
+     *
+     * It is the responsibility of the user to ensure that methods are invoked
+     * in the correct order, such as connecting before attempting to send or
+     * receive data and disconnecting once the connection is no longer needed.
+     */
     class Connection : public std::enable_shared_from_this<Connection> {
     public:
         explicit Connection(asio::io_context& io_context);
@@ -38,6 +53,8 @@ namespace cp2p {
         std::string get_remote_id() const;
 
         void set_remote_id(const std::string& id);
+
+        bool is_open() const;
 
         void deliver(const Message& msg);
 
