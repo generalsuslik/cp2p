@@ -2,9 +2,9 @@
 // Created by generalsuslik on 03.03.25.
 //
 
-#include "../inc/message.hpp"
+#include "message.hpp"
 
-#include "../../crypto/inc/aes.hpp"
+#include "crypto/inc/aes.hpp"
 
 #include <iomanip>
 #include <iostream>

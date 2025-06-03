@@ -58,33 +58,48 @@ else ()
 endif ()
 
 set(SOURCES
-        crypto/src/aes.cpp
-        crypto/inc/aes.hpp
-        crypto/src/rsa.cpp
-        crypto/inc/rsa.hpp
-        crypto/src/util.cpp
-        crypto/inc/util.hpp
+        ${CMAKE_SOURCE_DIR}/crypto/src/aes.cpp
+        ${CMAKE_SOURCE_DIR}/crypto/inc/aes.hpp
+        ${CMAKE_SOURCE_DIR}/crypto/src/rsa.cpp
+        ${CMAKE_SOURCE_DIR}/crypto/inc/rsa.hpp
+        ${CMAKE_SOURCE_DIR}/crypto/src/util.cpp
+        ${CMAKE_SOURCE_DIR}/crypto/inc/util.hpp
 
-        network/src/node.cpp
-        network/inc/node.hpp
+        ${CMAKE_SOURCE_DIR}/network/src/node.cpp
+        ${CMAKE_SOURCE_DIR}/network/inc/node.hpp
 
-        network/src/connection.cpp
-        network/inc/connection.hpp
+        ${CMAKE_SOURCE_DIR}/network/src/connection.cpp
+        ${CMAKE_SOURCE_DIR}/network/inc/connection.hpp
 
-        network/src/message.cpp
-        network/inc/message.hpp
+        ${CMAKE_SOURCE_DIR}/network/src/message.cpp
+        ${CMAKE_SOURCE_DIR}/network/inc/message.hpp
 
-        network/inc/message_queue.hpp
+        ${CMAKE_SOURCE_DIR}/network/inc/message_queue.hpp
 
-        util/inc/util.hpp
+        ${CMAKE_SOURCE_DIR}/util/inc/util.hpp
 
-        include/cp2p.hpp
+        ${CMAKE_SOURCE_DIR}/include/cp2p.hpp
+
+    CACHE INTERNAL ""
+)
+
+set(INCLUDE_DIRS
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/crypto/inc
+        ${CMAKE_SOURCE_DIR}/network/inc
+
+    CACHE INTERNAL ""
 )
 
 add_executable(${PROJECT_NAME}
-        main.cpp
+        ${CMAKE_SOURCE_DIR}/main.cpp
 
         ${SOURCES}
+)
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -96,54 +111,5 @@ target_link_libraries(${PROJECT_NAME}
         spdlog::spdlog_header_only
 )
 
-find_package(GTest REQUIRED)
-include(GoogleTest)
-
-find_package(fmt REQUIRED)
-
-enable_testing()
-
-add_executable(tests
-        ${SOURCES}
-
-        test/crypto/test_aes.cpp
-        test/crypto/test_aes_rsa_integrity.cpp
-        test/test_util/test_util.cpp
-        test/test_util/test_util.hpp
-        test/network/test_message.cpp
-        test/crypto/test_rsa.cpp
-        test/crypto/test_util.cpp
-)
-target_link_libraries(tests
-    PRIVATE
-        GTest::GTest
-        GTest::Main
-        OpenSSL::SSL
-        OpenSSL::Crypto
-        fmt::fmt
-)
-
-target_compile_options(tests PRIVATE -g)
-
-gtest_discover_tests(tests)
-
-#---Library stuff---#
-set(LIBRARY cp2p)
-add_library(${LIBRARY}
-    SHARED
-        ${SOURCES}
-)
-
-target_include_directories(${LIBRARY}
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/include
-)
-
-target_link_libraries(${LIBRARY}
-    PRIVATE
-        Boost::system
-        OpenSSL::SSL
-        OpenSSL::Crypto
-        nlohmann_json::nlohmann_json
-        spdlog::spdlog_header_only
-)
+add_subdirectory(include)
+add_subdirectory(test)

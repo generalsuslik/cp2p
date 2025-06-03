@@ -65,8 +65,6 @@ namespace cp2p {
 
         void read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
 
-        void handle_message(const Message& msg);
-
     private:
         tcp::socket socket_;
         MessageQueue<std::shared_ptr<Message>> message_queue_;
