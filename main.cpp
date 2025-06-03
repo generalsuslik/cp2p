@@ -50,7 +50,8 @@ int main(const int argc, char* argv[]) {
                 node.send_message(id, msg);
             } else if (line.starts_with("connect ")) {
                 std::istringstream iss(line);
-                std::string command, mode;
+                std::string command;
+                std::string mode;
                 iss >> command >> mode;
 
                 if (mode == "-h") { // hub

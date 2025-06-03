@@ -2,11 +2,11 @@
 // Created by generalsuslik on 22.01.25.
 //
 
-#include "../inc/node.hpp"
+#include "node.hpp"
 
-#include "../../crypto/inc/rsa.hpp"
-#include "../../crypto/inc/util.hpp"
-#include "../../util/inc/util.hpp"
+#include "crypto/inc/rsa.hpp"
+#include "crypto/inc/util.hpp"
+#include "util/inc/util.hpp"
 
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
@@ -51,6 +51,9 @@ namespace cp2p {
         stop();
     }
 
+    /**
+     * @brief Runs the node by creating a thread and running io_context in it
+     */
     void Node::run() {
         if (io_thread_.joinable() && is_active_) {
             return;
@@ -63,6 +66,11 @@ namespace cp2p {
         });
     }
 
+    /**
+     * @brief Stops the node by stopping the io_context and joining the thread
+     *
+     * Also, it sends a disconnect request to the hub's server if is_hub is set to true
+     */
     void Node::stop() {
         if (!is_active_) {
             return;
@@ -183,6 +191,13 @@ namespace cp2p {
         it->second->deliver(message);
     }
 
+    /**
+     * @brief Sends message to node {id}
+     *
+     * @param id node-to-send-message's id
+     * @param message message to send
+     * @param on_success callback called after a message is sent
+     */
     void Node::send_message(const std::string& id, const Message& message, const std::function<void()>& on_success) {
         std::lock_guard lock(mutex_);
 
@@ -326,10 +341,18 @@ namespace cp2p {
             } else if (msg->type() == MessageType::TEXT) {
                 spdlog::info("Received [{}]: {}", conn->get_remote_id(), std::string(msg->body(), msg->body_length()));
             } else if (msg->type() == MessageType::SEARCH) {
-                spdlog::info("search");
-                std::cout << *msg << std::endl;
+                const json node = search_node(msg->body());
+                std::cout << node << std::endl;
             }
         });
+    }
+
+    json Node::search_node(const std::string& target_id) {
+        return nullptr;
+    }
+
+    json Node::request_connection(const std::string& target_id) {
+        return nullptr;
     }
 
     void Node::connect_to_server(const std::string& host, const std::uint16_t port) {

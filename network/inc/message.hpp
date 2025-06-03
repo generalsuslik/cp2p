@@ -8,7 +8,6 @@
 #include <nlohmann/json.hpp>
 
 #include <cstdint>
-#include <memory>
 
 namespace cp2p {
 

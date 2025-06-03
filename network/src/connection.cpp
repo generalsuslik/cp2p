@@ -2,7 +2,7 @@
 // Created by generalsuslik on 03.03.25.
 //
 
-#include "../inc/connection.hpp"
+#include "connection.hpp"
 
 #include <spdlog/spdlog.h>
 

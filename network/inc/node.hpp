@@ -7,7 +7,7 @@
 
 #include "connection.hpp"
 
-#include "../../crypto/inc/rsa.hpp"
+#include "crypto/inc/rsa.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
@@ -150,7 +150,9 @@ namespace cp2p {
 
         void receive(const std::shared_ptr<Connection>& conn);
 
-        json search_node(const std::string& id);
+        json search_node(const std::string& target_id);
+
+        json request_connection(const std::string& target_id);
 
         void connect_to_server(const std::string& host, std::uint16_t port);
 
