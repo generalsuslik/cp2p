@@ -11,10 +11,11 @@
 namespace cp2p {
 
 
-    Connection::Connection(asio::io_context& io_context)
+    Connection::Connection(asio::io_context& io_context, const std::shared_ptr<Node>& node)
         : socket_(io_context)
         , is_initialized_(false)
-        , is_closed_(false) {}
+        , is_closed_(false)
+        , node_(node) {}
 
     Connection::~Connection() {
         close();

@@ -4,7 +4,7 @@
 
 #include "node.hpp"
 
-#include "crypto/inc/rsa.hpp"
+#include "crypto/inc/aes.hpp"
 #include "crypto/inc/util.hpp"
 #include "util/inc/util.hpp"
 
@@ -27,11 +27,12 @@ namespace cp2p {
     Node::Node(const std::string& host, const std::uint16_t port, const bool is_hub)
             : acceptor_(io_context_)
             , is_hub_(is_hub)
-            , is_active_(false) {
-        identity_.id = std::move(generate_id(identity_.rsa.to_public_string()));
-        std::tie(identity_.host, identity_.port) = std::tie(host, port);
+            , is_active_(false)
+            , identity_(std::make_shared<NodeIdentity>()) {
+        identity_->id = std::move(generate_id(identity_->rsa.to_public_string()));
+        std::tie(identity_->host, identity_->port) = std::tie(host, port);
 
-        const tcp::endpoint ep(asio::ip::make_address(identity_.host), identity_.port);
+        const tcp::endpoint ep(asio::ip::make_address(identity_->host), identity_->port);
         acceptor_.open(ep.protocol());
 
         boost::system::error_code ec;
@@ -42,9 +43,6 @@ namespace cp2p {
         acceptor_.listen();
 
         spdlog::info("Initialized with id: {}", get_id());
-
-        accept();
-        run();
     }
 
     Node::~Node() {
@@ -64,6 +62,8 @@ namespace cp2p {
         io_thread_ = std::thread([this] {
             io_context_.run();
         });
+
+        accept();
     }
 
     /**
@@ -108,7 +108,7 @@ namespace cp2p {
 
         connect_to(hub_host, hub_port, [this, hub_id, target_id] {
             const Message search_node_message(target_id, MessageType::SEARCH);
-            send_message(hub_id, search_node_message);
+            do_send_message(hub_id, search_node_message);
         });
     }
 
@@ -123,7 +123,7 @@ namespace cp2p {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
-        auto new_conn = std::make_shared<Connection>(io_context_);
+        auto new_conn = std::make_shared<Connection>(io_context_, shared_from_this());
         if (!new_conn->socket().is_open()) {
             new_conn->socket().open(tcp::v4());
             spdlog::info("[Node::connect_to] Opened socket");
@@ -173,13 +173,34 @@ namespace cp2p {
         }
     }
 
+    void Node::send_message(const std::string& id, const std::string& message) {
+        const Message msg(message);
+        do_send_message(id, msg);
+    }
+
+    // void Node::send_message(const std::string& id, const Message& message) {
+    //     // now we have to encrypt the message before sending it
+    //
+    //     if (message.type() != MessageType::TEXT) {
+    //         spdlog::error("[Node::send_message] message type is not TEXT");
+    //         return;
+    //     }
+    //
+    //     const std::string& message_body = message.body();
+    //     const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
+    //     const auto& encrypted_body = aes::aes_encrypt(message_body, aes_key, aes_iv);
+    //
+    //     const auto& encrypted_aes_key = rsa::RSAKeyPair::encrypt(aes_key.begin(), aes_key.end());
+    //     const auto& encrypted_aes_iv = rsa::RSAKeyPair::encrypt(aes_iv.begin(), aes_iv.end());
+    // }
+
     /**
      * @brief Sends message to node {id}
      *
      * @param id node-to-send-a-message's id
      * @param message message to send
      */
-    void Node::send_message(const std::string& id, const Message& message) {
+    void Node::do_send_message(const std::string& id, const Message& message) {
         std::lock_guard lock(mutex_);
 
         const auto it = connections_.find(id);
@@ -198,7 +219,7 @@ namespace cp2p {
      * @param message message to send
      * @param on_success callback called after a message is sent
      */
-    void Node::send_message(const std::string& id, const Message& message, const std::function<void()>& on_success) {
+    void Node::do_send_message(const std::string& id, const Message& message, const std::function<void()>& on_success) {
         std::lock_guard lock(mutex_);
 
         const auto it = connections_.find(id);
@@ -263,7 +284,7 @@ namespace cp2p {
      * @brief Returns self id
      */
     Node::ID Node::get_id() const {
-        return identity_.id;
+        return identity_->id;
     }
 
     /**
@@ -304,7 +325,8 @@ namespace cp2p {
      * Creates a new Connection object
      */
     void Node::accept() {
-        auto new_conn = std::make_shared<Connection>(io_context_);
+        auto self = shared_from_this();
+        auto new_conn = std::make_shared<Connection>(io_context_, self);
 
         acceptor_.async_accept(new_conn->socket(),
             [this, new_conn](const boost::system::error_code& ec) {
@@ -348,6 +370,15 @@ namespace cp2p {
     }
 
     json Node::search_node(const std::string& target_id) {
+        // tcp::resolver resolver(io_context_);
+
+        // json res;
+
+        // for (const auto& conn : connections_ | std::views::values) {
+        //     if (conn->get_remote_id() == target_id) {
+        //         res = conn->get_remote_no
+        //     }
+        // }
         return nullptr;
     }
 
@@ -380,8 +411,8 @@ namespace cp2p {
 
         const json payload = {
             { "id", get_id() },
-            { "host", identity_.host },
-            { "port", identity_.port },
+            { "host", identity_->host },
+            { "port", identity_->port },
         };
 
         http::request<http::string_body> req(verb, "/", 11);
