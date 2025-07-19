@@ -59,22 +59,23 @@ namespace cp2p::rsa {
          * @tparam It contiguous iterator for the collection to encrypt (std::vector or std::string)
          * @param begin begin iterator of the collection to encrypt
          * @param end end iterator of the collection to encrypt
+         * @param public_key receiver's public key
          * @return vector of 1-byte symbols; contains cyphertext
          */
         template <std::contiguous_iterator It>
-        std::vector<std::uint8_t> encrypt(It begin, It end) {
+        static std::vector<std::uint8_t> encrypt(It begin, It end, EVP_PKEY* public_key) {
             const std::size_t plaintext_len = std::distance(begin, end);
             const auto* data = reinterpret_cast<const std::uint8_t*>(&*begin);
 
             // Get the key size and calculate the maximum plaintext length
-            const int key_size = EVP_PKEY_size(pkey_.get());
+            const int key_size = EVP_PKEY_size(public_key);
             const int max_plaintext_len = key_size - 42; // 42 bytes is the overhead for OAEP padding
 
             if (plaintext_len > static_cast<std::size_t>(max_plaintext_len)) {
                 throw std::runtime_error("Input data too large for RSA encryption with current key size");
             }
 
-            const EVP_CTX_ptr ctx(EVP_PKEY_CTX_new(pkey_.get(), nullptr), EVP_PKEY_CTX_free);
+            const EVP_CTX_ptr ctx(EVP_PKEY_CTX_new(public_key, nullptr), EVP_PKEY_CTX_free);
             if (!ctx) throw std::runtime_error("Failed to create encryption context");
 
             if (EVP_PKEY_encrypt_init(ctx.get()) <= 0)
@@ -84,7 +85,7 @@ namespace cp2p::rsa {
             if (EVP_PKEY_encrypt(ctx.get(), nullptr, &len, data, plaintext_len) <= 0)
                 throw std::runtime_error("Failed to determine encrypted size");
 
-            if (EVP_PKEY_base_id(pkey_.get()) != EVP_PKEY_RSA) {
+            if (EVP_PKEY_base_id(public_key) != EVP_PKEY_RSA) {
                 throw std::runtime_error("Not an RSA key");
             }
 

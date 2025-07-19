@@ -22,7 +22,9 @@ add_executable(${TESTS}
 
 target_include_directories(${TESTS}
     PRIVATE
-        ${INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/crypto/inc
+        ${CMAKE_SOURCE_DIR}/network/inc
 )
 
 target_link_libraries(${TESTS}
@@ -32,6 +34,9 @@ target_link_libraries(${TESTS}
         OpenSSL::SSL
         OpenSSL::Crypto
         fmt::fmt
+
+        cp2p_crypto
+        cp2p_network
 )
 
 target_compile_options(${TESTS} PRIVATE -g)

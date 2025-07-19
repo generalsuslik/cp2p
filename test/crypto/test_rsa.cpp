@@ -13,7 +13,7 @@ TEST(RSA, test_rsa_encoding) {
     rsa::RSAKeyPair rsa;
     const std::string random_string = ::random_string(214);
 
-    std::vector<unsigned char> encrypted = rsa.encrypt(random_string.begin(), random_string.end());
+    std::vector<unsigned char> encrypted = rsa::RSAKeyPair::encrypt(random_string.begin(), random_string.end(), rsa.get());
     std::vector<unsigned char> decrypted = rsa.decrypt(encrypted.begin(), encrypted.end());
     const std::string decrypted_str(decrypted.begin(), decrypted.end());
 

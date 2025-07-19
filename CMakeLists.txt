@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
-project(cp2p_build VERSION 1.0.1)
+project(cp2p VERSION 1.0.1)
+
+set(TARGET cp2p_build)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,16 +29,6 @@ else ()
     message(FATAL_ERROR "Boost not found")
 endif ()
 
-#-----OpenSSL-----#
-find_package(OpenSSL REQUIRED)
-
-if (OpenSSL_FOUND)
-    include_directories(${OpenSSL_INCLUDE_DIRS})
-    message(STATUS "OpenSSL include directories: ${OpenSSL_INCLUDE_DIRS}")
-else ()
-    message(FATAL_ERROR "OpenSSL not found")
-endif ()
-
 #-----nlohmann JSON-----#
 find_package(nlohmann_json 3.11.3 REQUIRED)
 
@@ -57,25 +49,17 @@ else ()
     message(FATAL_ERROR "spdlog not found")
 endif ()
 
+#-----OpenSSL-----#
+find_package(OpenSSL REQUIRED)
+
+if (OpenSSL_FOUND)
+    include_directories(${OpenSSL_INCLUDE_DIRS})
+    message(STATUS "OpenSSL include directories: ${OpenSSL_INCLUDE_DIRS}")
+else ()
+    message(FATAL_ERROR "OpenSSL not found")
+endif ()
+
 set(SOURCES
-        ${CMAKE_SOURCE_DIR}/crypto/src/aes.cpp
-        ${CMAKE_SOURCE_DIR}/crypto/inc/aes.hpp
-        ${CMAKE_SOURCE_DIR}/crypto/src/rsa.cpp
-        ${CMAKE_SOURCE_DIR}/crypto/inc/rsa.hpp
-        ${CMAKE_SOURCE_DIR}/crypto/src/util.cpp
-        ${CMAKE_SOURCE_DIR}/crypto/inc/util.hpp
-
-        ${CMAKE_SOURCE_DIR}/network/src/node.cpp
-        ${CMAKE_SOURCE_DIR}/network/inc/node.hpp
-
-        ${CMAKE_SOURCE_DIR}/network/src/connection.cpp
-        ${CMAKE_SOURCE_DIR}/network/inc/connection.hpp
-
-        ${CMAKE_SOURCE_DIR}/network/src/message.cpp
-        ${CMAKE_SOURCE_DIR}/network/inc/message.hpp
-
-        ${CMAKE_SOURCE_DIR}/network/inc/message_queue.hpp
-
         ${CMAKE_SOURCE_DIR}/util/inc/util.hpp
 
         ${CMAKE_SOURCE_DIR}/include/cp2p.hpp
@@ -91,25 +75,25 @@ set(INCLUDE_DIRS
     CACHE INTERNAL ""
 )
 
-add_executable(${PROJECT_NAME}
+add_subdirectory(crypto)
+add_subdirectory(network)
+add_subdirectory(include)
+add_subdirectory(test)
+
+add_executable(${TARGET}
         ${CMAKE_SOURCE_DIR}/main.cpp
 
         ${SOURCES}
 )
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(${TARGET}
     PRIVATE
-        ${INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/crypto
+        ${CMAKE_SOURCE_DIR}/network
 )
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${TARGET}
     PRIVATE
-        Boost::system
-        OpenSSL::SSL
-        OpenSSL::Crypto
-        nlohmann_json::nlohmann_json
-        spdlog::spdlog_header_only
+        cp2p_crypto
+        cp2p_network
 )
-
-add_subdirectory(include)
-add_subdirectory(test)

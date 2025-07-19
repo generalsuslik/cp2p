@@ -7,7 +7,7 @@
 
 #include "connection.hpp"
 
-#include "crypto/inc/rsa.hpp"
+#include "../../crypto/inc/rsa.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
@@ -89,13 +89,19 @@ namespace cp2p {
          */
         void broadcast(const Message& message);
 
+        void send_message(const std::string& id, const std::string& message);
+
+        void send_message(const std::string& id, const Message& message);
+
+        void send_message(const std::string& id, const Message& message, const std::function<void()>& on_success);
+
         /**
          * @brief Sends message to node {id}
          *
          * @param id node-to-send-message's id
          * @param message message to send
          */
-        void send_message(const std::string& id, const Message& message);
+        void do_send_message(const std::string& id, const Message& message);
 
         /**
          * @brief Sends message to node {id}
@@ -104,7 +110,7 @@ namespace cp2p {
          * @param message message to send
          * @param on_success callback called after a message is sent
          */
-        void send_message(const std::string& id, const Message& message, const std::function<void()>& on_success);
+        void do_send_message(const std::string& id, const Message& message, const std::function<void()>& on_success);
 
         /**
          * @brief Disconnects from all connected nodes
@@ -137,7 +143,7 @@ namespace cp2p {
          */
         void set_hub(bool val);
 
-        static ID generate_id(const std::string &public_key);
+        static ID generate_id(const std::string& public_key);
 
     private:
         /**
@@ -192,7 +198,7 @@ namespace cp2p {
         std::atomic_bool is_hub_;
         std::atomic_bool is_active_;
 
-        NodeIdentity identity_;
+        std::shared_ptr<NodeIdentity> identity_;
     };
 
 
