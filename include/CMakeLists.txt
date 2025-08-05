@@ -17,4 +17,5 @@ target_link_libraries(${LIBRARY}
 
         cp2p_crypto
         сp2p_network
+        util
 )
