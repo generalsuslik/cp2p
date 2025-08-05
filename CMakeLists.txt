@@ -60,8 +60,6 @@ else ()
 endif ()
 
 set(SOURCES
-        ${CMAKE_SOURCE_DIR}/util/inc/util.hpp
-
         ${CMAKE_SOURCE_DIR}/include/cp2p.hpp
 
     CACHE INTERNAL ""
@@ -69,31 +67,27 @@ set(SOURCES
 
 set(INCLUDE_DIRS
         ${CMAKE_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/crypto/inc
-        ${CMAKE_SOURCE_DIR}/network/inc
 
     CACHE INTERNAL ""
 )
 
+add_subdirectory(application)
 add_subdirectory(crypto)
 add_subdirectory(network)
 add_subdirectory(include)
 add_subdirectory(test)
+add_subdirectory(util)
 
 add_executable(${TARGET}
         ${CMAKE_SOURCE_DIR}/main.cpp
-
-        ${SOURCES}
 )
 
 target_include_directories(${TARGET}
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/crypto
-        ${CMAKE_SOURCE_DIR}/network
+        ${CMAKE_SOURCE_DIR}/application
 )
 
 target_link_libraries(${TARGET}
     PRIVATE
-        cp2p_crypto
-        cp2p_network
+        application
 )

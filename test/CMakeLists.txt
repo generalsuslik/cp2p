@@ -13,19 +13,17 @@ add_executable(${TESTS}
         ${CMAKE_SOURCE_DIR}/test/main.cpp
         ${CMAKE_SOURCE_DIR}/test/crypto/test_aes.cpp
         ${CMAKE_SOURCE_DIR}/test/crypto/test_aes_rsa_integrity.cpp
-        ${CMAKE_SOURCE_DIR}/test/test_util/test_util.cpp
-        ${CMAKE_SOURCE_DIR}/test/test_util/test_util.hpp
-        ${CMAKE_SOURCE_DIR}/test/network/test_message.cpp
+        ${CMAKE_SOURCE_DIR}/test/message/test_message.cpp
         ${CMAKE_SOURCE_DIR}/test/crypto/test_rsa.cpp
-        ${CMAKE_SOURCE_DIR}/test/crypto/test_util.cpp
 )
 
 target_include_directories(${TESTS}
     PRIVATE
         ${CMAKE_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/crypto/inc
-        ${CMAKE_SOURCE_DIR}/network/inc
+        ${CMAKE_SOURCE_DIR}/test
 )
+
+add_subdirectory(test_util)
 
 target_link_libraries(${TESTS}
     PRIVATE
@@ -35,8 +33,10 @@ target_link_libraries(${TESTS}
         OpenSSL::Crypto
         fmt::fmt
 
+        test_util
+
         cp2p_crypto
-        cp2p_network
+#        cp2p_network
 )
 
 target_compile_options(${TESTS} PRIVATE -g)

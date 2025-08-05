@@ -6,8 +6,11 @@
 #define RSA_HPP
 
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/types.h>
+
+#include "util/util.hpp"
 
 #include <memory>
 #include <string>
@@ -15,6 +18,8 @@
 
 namespace cp2p::rsa {
 
+
+    using EVP_PKEY_ptr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
 
     constexpr int k_bits = 2048;
     constexpr int k_bytes = k_bits / 8;
@@ -27,6 +32,9 @@ namespace cp2p::rsa {
      * and perform basic key-related operations.
      */
     class RSAKeyPair {
+    private:
+        using EVP_CTX_ptr = std::unique_ptr<EVP_PKEY_CTX, decltype(&EVP_PKEY_CTX_free)>;
+
     public:
         explicit RSAKeyPair(int bits = k_bits);
 
@@ -155,11 +163,25 @@ namespace cp2p::rsa {
         void generate_pair(int bits);
 
     private:
-        using EVP_PKEY_ptr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
-        using EVP_CTX_ptr = std::unique_ptr<EVP_PKEY_CTX, decltype(&EVP_PKEY_CTX_free)>;
-
         EVP_PKEY_ptr pkey_{nullptr, EVP_PKEY_free};
     };
+
+    template <CMessageContainer KeyContainer>
+    EVP_PKEY_ptr to_public_key(const KeyContainer& pubkey_data) {
+        BIO* bio = BIO_new_mem_buf(pubkey_data.data(), static_cast<int>(pubkey_data.size()));
+        if (!bio) {
+            throw std::runtime_error("[rsa::public_key_from_string] Failed to create BIO from public key string");
+        }
+
+        EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+        BIO_free(bio);
+
+        if (!pkey) {
+            throw std::runtime_error("[rsa::public_key_from_string] Failed to parse public key from string");
+        }
+
+        return EVP_PKEY_ptr{pkey, &EVP_PKEY_free};
+    }
 
 } // cp2p::rsa
 

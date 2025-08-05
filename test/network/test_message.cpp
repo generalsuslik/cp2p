@@ -4,12 +4,12 @@
 
 #include <gtest/gtest.h>
 
-#include "../../crypto/inc/aes.hpp"
-#include "../../network/inc/message.hpp"
+#include "crypto/aes.hpp"
+#include "network/message.hpp"
 
-#include "../test_util/test_util.hpp"
+#include "test_util/test_util.hpp"
 
-TEST(TestMessage, test_message_creation) {
+TEST(TestNetworkMessage, test_message_creation) {
     using namespace cp2p;
 
     const std::string message_str = random_string();
@@ -21,7 +21,7 @@ TEST(TestMessage, test_message_creation) {
     assert(message.body() == message_str);
 }
 
-TEST(TestMessage, test_serialization_deserialization) {
+TEST(TestNetworkMessage, test_serialization_deserialization) {
     using namespace cp2p;
 
     const std::string message_str = random_string();
@@ -40,7 +40,7 @@ TEST(TestMessage, test_serialization_deserialization) {
     assert(message.type() == message_type);
 }
 
-TEST(TestMessage, test_encrypt_decrypt_message) {
+TEST(TestNetworkMessage, test_encrypt_decrypt_message) {
     using namespace cp2p;
 
     const std::string message_str = random_string();

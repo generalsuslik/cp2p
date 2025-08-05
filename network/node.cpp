@@ -4,16 +4,42 @@
 
 #include "node.hpp"
 
-#include "crypto/inc/aes.hpp"
-#include "crypto/inc/util.hpp"
-#include "util/inc/util.hpp"
+#include "crypto/aes.hpp"
+#include "crypto/rsa.hpp"
+#include "crypto/util.hpp"
+#include "util/util.hpp"
 
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <iostream>
 #include <utility>
+
+namespace {
+
+    using IDPair = std::pair<cp2p::Node::ID, cp2p::rsa::EVP_PKEY_ptr>;
+
+    template <cp2p::CMessageContainer MessageContainer>
+    IDPair parse_handshake_string(const MessageContainer& handshake_data) {
+        auto separator_it = std::ranges::find(handshake_data, ' ');
+        assert(separator_it != handshake_data.end());
+        assert(*separator_it == ' ');
+
+        std::string id;
+        for (auto it = handshake_data.begin(); it != separator_it; ++it) {
+            id.push_back(*it);
+        }
+
+        const std::vector<std::uint8_t> public_key_data(separator_it + 1, handshake_data.end());
+
+        assert(handshake_data.size() == public_key_data.size() + id.size() + 1);
+
+        return { id, cp2p::rsa::to_public_key(public_key_data) };
+    }
+
+} // namespace
 
 namespace cp2p {
 
@@ -53,15 +79,17 @@ namespace cp2p {
      * @brief Runs the node by creating a thread and running io_context in it
      */
     void Node::run() {
-        if (io_thread_.joinable() && is_active_) {
+        if (is_active_) {
             return;
         }
 
         is_active_ = true;
 
-        io_thread_ = std::thread([this] {
-            io_context_.run();
-        });
+        for (size_t i = 0; i < num_threads_; ++i) {
+            io_threads_.emplace_back([this] {
+                io_context_.run();
+            });
+        }
 
         accept();
     }
@@ -72,12 +100,12 @@ namespace cp2p {
      * Also, it sends a disconnect request to the hub's server if is_hub is set to true
      */
     void Node::stop() {
-        if (!is_active_) {
+        if (!is_active_.load()) {
             return;
         }
 
         is_active_ = false;
-        if (is_hub_) {
+        if (is_hub_.load()) {
             disconnect_from_server("127.0.0.1", 8080);
             is_hub_ = false;
         }
@@ -86,8 +114,10 @@ namespace cp2p {
             acceptor_.close();
             io_context_.stop();
 
-            if (io_thread_.joinable()) {
-                io_thread_.join();
+            for (auto& t : io_threads_) {
+                if (t.joinable()) {
+                    t.join();
+                }
             }
         });
     }
@@ -136,18 +166,19 @@ namespace cp2p {
                     return;
                 }
 
-                const Message handshake(get_id(), MessageType::HANDSHAKE);
+                const Message handshake(make_handshake_string(), MessageType::HANDSHAKE);
 
                 new_conn->connect(handshake,
-                        [this, new_conn, on_success](const std::shared_ptr<Message>& msg) {
+                    [this, new_conn, on_success](const std::shared_ptr<Message>& msg) {
                     // processing ACCEPT msg
-                    const std::string id = msg->body();
+                    auto [id, pubkey_ptr] = parse_handshake_string(msg->body());
 
                     new_conn->set_remote_id(id);
 
                     {
                         std::lock_guard lock(mutex_);
-                        connections_[id] = new_conn;
+                        connections_[new_conn->get_remote_id()] = new_conn;
+                        public_keys_.emplace(new_conn->get_remote_id(), std::move(pubkey_ptr));
                     }
 
                     receive(new_conn);
@@ -175,24 +206,26 @@ namespace cp2p {
 
     void Node::send_message(const std::string& id, const std::string& message) {
         const Message msg(message);
-        do_send_message(id, msg);
+        send_message(id, msg);
     }
 
-    // void Node::send_message(const std::string& id, const Message& message) {
-    //     // now we have to encrypt the message before sending it
-    //
-    //     if (message.type() != MessageType::TEXT) {
-    //         spdlog::error("[Node::send_message] message type is not TEXT");
-    //         return;
-    //     }
-    //
-    //     const std::string& message_body = message.body();
-    //     const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
-    //     const auto& encrypted_body = aes::aes_encrypt(message_body, aes_key, aes_iv);
-    //
-    //     const auto& encrypted_aes_key = rsa::RSAKeyPair::encrypt(aes_key.begin(), aes_key.end());
-    //     const auto& encrypted_aes_iv = rsa::RSAKeyPair::encrypt(aes_iv.begin(), aes_iv.end());
-    // }
+    void Node::send_message(const std::string& id, const Message& message) {
+        if (message.type() != MessageType::TEXT) {
+            spdlog::error("[Node::send_message] message type is not TEXT");
+            return;
+        }
+
+        do_send_message(id, encrypt_message(id, message));
+    }
+
+    void Node::send_message(const std::string& id, const Message& message, const std::function<void()>& on_success) {
+        if (message.type() != MessageType::TEXT) {
+            spdlog::error("[Node::send_message] message type is not TEXT");
+            return;
+        }
+
+        do_send_message(id, encrypt_message(id, message), on_success);
+    }
 
     /**
      * @brief Sends message to node {id}
@@ -287,6 +320,10 @@ namespace cp2p {
         return identity_->id;
     }
 
+    std::shared_ptr<Node::NodeIdentity> Node::get_identity() const {
+        return identity_;
+    }
+
     /**
      * @brief Returns vector of all the node's connections
      */
@@ -325,26 +362,29 @@ namespace cp2p {
      * Creates a new Connection object
      */
     void Node::accept() {
-        auto self = shared_from_this();
-        auto new_conn = std::make_shared<Connection>(io_context_, self);
+        auto new_conn = std::make_shared<Connection>(io_context_, shared_from_this());
 
         acceptor_.async_accept(new_conn->socket(),
             [this, new_conn](const boost::system::error_code& ec) {
                 if (!ec) {
                     new_conn->accept([this, new_conn](const std::shared_ptr<Message>& msg){
-                        new_conn->set_remote_id(msg->body());
+
+                        auto [id, pubkey_ptr] = parse_handshake_string(msg->body());
+
+                        new_conn->set_remote_id(id);
 
                         {
                             std::lock_guard lock(mutex_);
                             connections_[new_conn->get_remote_id()] = new_conn;
+                            public_keys_.emplace(new_conn->get_remote_id(), std::move(pubkey_ptr));
                         }
 
-                        const Message approve(get_id(), MessageType::ACCEPT);
+                        const Message approve(make_handshake_string(), MessageType::ACCEPT);
                         new_conn->deliver(approve);
 
                         spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
                         receive(new_conn);
-                   });
+                    });
                 }
 
                 accept();
@@ -354,31 +394,70 @@ namespace cp2p {
     void Node::receive(const std::shared_ptr<Connection>& conn) {
         conn->start([this, conn](const std::shared_ptr<Message>& msg) {
             if (msg->type() == MessageType::DISCONNECT) {
-                const std::string id = msg->body();
+                const std::string id = get_string_from_container(msg->body());
 
                 connections_[id]->close();
                 remove_connection(id);
 
                 spdlog::info("[Node::receive] Disconnected from {}", id);
             } else if (msg->type() == MessageType::TEXT) {
-                spdlog::info("Received [{}]: {}", conn->get_remote_id(), std::string(msg->body(), msg->body_length()));
+                const std::string decrypted_message = decrypt_message(*msg);
+                spdlog::info("Received [{}]: {}", conn->get_remote_id(), decrypted_message);
             } else if (msg->type() == MessageType::SEARCH) {
-                const json node = search_node(msg->body());
+                const json node = search_node(get_string_from_container(msg->body()));
                 std::cout << node << std::endl;
             }
         });
     }
 
+    Message Node::encrypt_message(const ID& target_id, const Message& message) const {
+        const auto& message_body = get_string_from_container(message.body());
+
+        const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
+        const auto& encrypted_body = aes::aes_encrypt(message_body, aes_key, aes_iv);
+
+        const auto& encrypted_aes_key = rsa::RSAKeyPair::encrypt(
+            aes_key.begin(), aes_key.end(),
+            public_keys_.at(target_id).get()
+        );
+        const auto& encrypted_aes_iv = rsa::RSAKeyPair::encrypt(
+            aes_iv.begin(), aes_iv.end(),
+            public_keys_.at(target_id).get()
+        );
+
+        const std::vector<std::uint8_t> message_data = std::move(
+            make_message_data(encrypted_body, encrypted_aes_key, encrypted_aes_iv)
+        );
+        return Message(message_data);
+    }
+
+    std::string Node::decrypt_message(const Message& message) const {
+        const auto& message_body = get_string_from_container(message.body());
+
+        std::vector<unsigned char> encrypted_body;
+        std::vector<unsigned char> encrypted_aes_key;
+        std::vector<unsigned char> encrypted_aes_iv;
+
+        auto iter = message_body.begin();
+        for (; *iter != ' ' && iter != message_body.end(); ++iter) {
+            encrypted_body.push_back(*iter);
+        }
+
+        for (; *iter != ' ' && iter != message_body.end(); ++iter) {
+            encrypted_aes_key.push_back(*iter);
+        }
+
+        for (; iter != message_body.end(); ++iter) {
+            encrypted_aes_iv.push_back(*iter);
+        }
+
+        const auto& aes_key = identity_->rsa.decrypt(encrypted_aes_key.begin(), encrypted_aes_key.end());
+        const auto& aes_iv = identity_->rsa.decrypt(encrypted_aes_iv.begin(), encrypted_aes_iv.end());
+
+        return aes::aes_decrypt(encrypted_body, aes_key, aes_iv);
+    }
+
     json Node::search_node(const std::string& target_id) {
-        // tcp::resolver resolver(io_context_);
-
-        // json res;
-
-        // for (const auto& conn : connections_ | std::views::values) {
-        //     if (conn->get_remote_id() == target_id) {
-        //         res = conn->get_remote_no
-        //     }
-        // }
         return nullptr;
     }
 
@@ -525,6 +604,12 @@ namespace cp2p {
         }
 
         return "0.0.0.0";
+    }
+
+    std::string Node::make_handshake_string() const {
+        std::stringstream message_stream;
+        message_stream << get_id() << " " << identity_->rsa.to_public_string();
+        return message_stream.str();
     }
 
 

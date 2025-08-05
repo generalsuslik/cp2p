@@ -4,18 +4,17 @@
 
 #include "connection.hpp"
 
-#include <spdlog/spdlog.h>
+#include "network/node.hpp"
 
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 namespace cp2p {
 
 
-    Connection::Connection(asio::io_context& io_context, const std::shared_ptr<Node>& node)
+    Connection::Connection(asio::io_context& io_context, const std::shared_ptr<Node>&)
         : socket_(io_context)
         , is_initialized_(false)
-        , is_closed_(false)
-        , node_(node) {}
+        , is_closed_(false) {}
 
     Connection::~Connection() {
         close();
@@ -131,6 +130,7 @@ namespace cp2p {
             asio::buffer(message_queue_.front()->data(), message_queue_.front()->size()),
             [this, self](const boost::system::error_code& ec, std::size_t) {
                 if (is_closed_ || ec == asio::error::operation_aborted) {
+                    spdlog::info("[Connection::send_message]: is closed or operation aborted");
                     return;
                 }
 
@@ -183,8 +183,10 @@ namespace cp2p {
             });
     }
 
-    void Connection::read_body(const std::shared_ptr<Message>& msg,
-                               const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+    void Connection::read_body(
+        const std::shared_ptr<Message>& msg,
+        const std::function<void(const std::shared_ptr<Message>&)>& on_success
+    ) {
         if (is_closed_) {
             return;
         }
@@ -192,7 +194,7 @@ namespace cp2p {
         auto self = shared_from_this();
 
         async_read(socket_,
-            asio::buffer(msg->body(), msg->body_length()),
+            asio::buffer(msg->body_data(), msg->body_length()),
             [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (is_closed_ || ec == asio::error::operation_aborted) {
                     return;

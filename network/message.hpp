@@ -27,6 +27,9 @@ namespace cp2p {
      */
     class Message {
     public:
+        using data_type = std::uint8_t;
+
+    public:
         struct message_header {
             std::uint32_t message_length = 0;
             MessageType message_type = MessageType::TEXT;
@@ -38,9 +41,20 @@ namespace cp2p {
             MAX_BODY_LENGTH = 1024,
         };
 
+    public:
         Message();
 
         explicit Message(const std::string& message, MessageType type = MessageType::TEXT);
+
+        // template <MessageContainer Container>
+        explicit Message(const std::vector<std::uint8_t>& message_data, MessageType type = MessageType::TEXT);
+
+        template<std::contiguous_iterator It>
+        Message(
+            It begin,
+            It end,
+            MessageType type = MessageType::TEXT
+        );
 
         explicit Message(const nlohmann::json& json, MessageType type = MessageType::TEXT);
 
@@ -52,9 +66,14 @@ namespace cp2p {
         nlohmann::json to_json() const;
 
         [[nodiscard]]
-        const char* data() const;
+        const data_type* data() const;
 
-        char* data();
+        data_type* data();
+
+        [[nodiscard]]
+        const std::vector<data_type>& data_vector() const;
+
+        std::vector<data_type>& data_vector();
 
         [[nodiscard]]
         message_header header() const;
@@ -69,9 +88,9 @@ namespace cp2p {
         std::size_t size() const;
 
         [[nodiscard]]
-        const char* body() const;
+        const std::vector<std::uint8_t>& body() const;
 
-        char* body();
+        data_type* body_data();
 
         [[nodiscard]]
         std::size_t body_length() const;
@@ -88,8 +107,8 @@ namespace cp2p {
         friend std::ostream& operator<<(std::ostream& os, const Message& message);
 
     private:
-        char data_[HEADER_LENGTH + MAX_BODY_LENGTH];
-        std::string body_;
+        std::vector<data_type> data_;
+        const std::vector<data_type> body_;
         std::size_t body_length_;
         message_header header_;
     };

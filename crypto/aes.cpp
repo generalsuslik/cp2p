@@ -2,7 +2,7 @@
 // Created by generalsuslik on 28.01.25.
 //
 
-#include "../inc/aes.hpp"
+#include "aes.hpp"
 
 #include <openssl/err.h>
 #include <openssl/rand.h>

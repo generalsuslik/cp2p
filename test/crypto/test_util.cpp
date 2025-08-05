@@ -6,7 +6,7 @@
 
 #include "../test_util/test_util.hpp"
 
-#include "../../crypto/inc/util.hpp"
+#include "crypto/util.hpp"
 
 TEST(CRYPTO_UTIL_TEST, util_test) {
     const std::string input = random_string();

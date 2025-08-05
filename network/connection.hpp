@@ -6,7 +6,8 @@
 #define CONNECTION_H
 
 #include "message.hpp"
-#include "message_queue.hpp"
+
+#include "network/message_queue.hpp"
 
 #include <boost/asio.hpp>
 
@@ -76,7 +77,7 @@ namespace cp2p {
         std::atomic_bool is_initialized_;
         std::atomic_bool is_closed_;
 
-        std::weak_ptr<Node> node_;
+        std::weak_ptr<Node> parent_node_;
     };
 
 } // cp2p

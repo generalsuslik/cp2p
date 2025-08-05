@@ -7,7 +7,7 @@
 
 #include "connection.hpp"
 
-#include "../../crypto/inc/rsa.hpp"
+#include "crypto/rsa.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
@@ -33,6 +33,7 @@ namespace cp2p {
     class Node : public std::enable_shared_from_this<Node> {
     public:
         using ID = std::string;
+        using PublicKeyPtr = rsa::EVP_PKEY_ptr;
 
     public:
         struct NodeIdentity {
@@ -131,6 +132,8 @@ namespace cp2p {
          */
         ID get_id() const;
 
+        std::shared_ptr<NodeIdentity> get_identity() const;
+
         /**
          * @brief Returns vector of all the node's connections
          */
@@ -155,6 +158,10 @@ namespace cp2p {
         void accept();
 
         void receive(const std::shared_ptr<Connection>& conn);
+
+        Message encrypt_message(const ID& target_id, const Message& message) const;
+
+        std::string decrypt_message(const Message& message) const;
 
         json search_node(const std::string& target_id);
 
@@ -186,19 +193,24 @@ namespace cp2p {
 
         std::string get_ip();
 
+        std::string make_handshake_string() const;
+
     private:
         asio::io_context io_context_;
-        std::thread io_thread_;
+        std::vector<std::thread> io_threads_;
 
         tcp::acceptor acceptor_;
 
-        std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "public key hash": conn
+        std::unordered_map<ID, std::shared_ptr<Connection>> connections_; // "public key hash": conn
+        std::unordered_map<ID, PublicKeyPtr> public_keys_; // "public key hash": public key
         std::mutex mutex_;
 
         std::atomic_bool is_hub_;
         std::atomic_bool is_active_;
 
         std::shared_ptr<NodeIdentity> identity_;
+
+        static constexpr int num_threads_ = 1;
     };
 
 

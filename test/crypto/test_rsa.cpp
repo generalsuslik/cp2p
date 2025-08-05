@@ -4,8 +4,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../../crypto/inc/rsa.hpp"
-#include "../test_util/test_util.hpp"
+#include "crypto/rsa.hpp"
+#include "test_util/test_util.hpp"
 
 TEST(RSA, test_rsa_encoding) {
     using namespace cp2p;
