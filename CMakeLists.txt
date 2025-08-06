@@ -59,12 +59,6 @@ else ()
     message(FATAL_ERROR "OpenSSL not found")
 endif ()
 
-set(SOURCES
-        ${CMAKE_SOURCE_DIR}/util/inc/util.hpp
-
-    CACHE INTERNAL ""
-)
-
 set(INCLUDE_DIRS
         ${CMAKE_SOURCE_DIR}
 
@@ -78,14 +72,13 @@ add_subdirectory(util)
 
 add_executable(${TARGET}
         ${CMAKE_SOURCE_DIR}/main.cpp
-
-        ${SOURCES}
 )
 
 target_include_directories(${TARGET}
     PRIVATE
         ${CMAKE_SOURCE_DIR}/crypto
         ${CMAKE_SOURCE_DIR}/network
+        ${CMAKE_SOURCE_DIR}/util
 )
 
 target_link_libraries(${TARGET}
