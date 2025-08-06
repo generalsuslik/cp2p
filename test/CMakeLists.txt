@@ -27,6 +27,11 @@ target_include_directories(${TESTS}
         ${CMAKE_SOURCE_DIR}/network/inc
 )
 
+include_directories(
+        /usr/include
+        /usr/include/gtest
+)
+
 target_link_libraries(${TESTS}
     PRIVATE
         GTest::GTest

@@ -123,7 +123,7 @@ namespace cp2p {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
 
-        auto new_conn = std::make_shared<Connection>(io_context_, shared_from_this());
+        auto new_conn = std::make_shared<Connection>(io_context_);
         if (!new_conn->socket().is_open()) {
             new_conn->socket().open(tcp::v4());
             spdlog::info("[Node::connect_to] Opened socket");
@@ -325,8 +325,7 @@ namespace cp2p {
      * Creates a new Connection object
      */
     void Node::accept() {
-        auto self = shared_from_this();
-        auto new_conn = std::make_shared<Connection>(io_context_, self);
+        auto new_conn = std::make_shared<Connection>(io_context_);
 
         acceptor_.async_accept(new_conn->socket(),
             [this, new_conn](const boost::system::error_code& ec) {

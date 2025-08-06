@@ -11,6 +11,8 @@
 TEST(AES_RSA, aes_rsa_integrity) {
     using namespace cp2p;
 
+    std::uint8_t DELIMITER = '\n';
+
     rsa::RSAKeyPair rsa;
     const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
     const std::string plaintext = random_string() + "a";
@@ -23,7 +25,7 @@ TEST(AES_RSA, aes_rsa_integrity) {
     for (const auto& byte : aes_key) {
         aes.push_back(byte);
     }
-    aes.push_back(' ');
+    aes.push_back(DELIMITER);
     for (const auto& byte : aes_iv) {
         aes.push_back(byte);
     }
@@ -37,7 +39,7 @@ TEST(AES_RSA, aes_rsa_integrity) {
     const std::vector<std::uint8_t> decrypted_aes = rsa.decrypt(encrypted_aes.begin(), encrypted_aes.end());
 
     // Deserializing AES for the decryption
-    const auto it = std::ranges::find(decrypted_aes, ' ');
+    const auto it = std::ranges::find(decrypted_aes, DELIMITER);
     const std::vector<std::uint8_t> decrypted_aes_key(decrypted_aes.begin(), it);
     const std::vector<std::uint8_t> decrypted_aes_iv(it + 1, decrypted_aes.end());
 

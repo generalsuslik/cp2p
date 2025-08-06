@@ -17,9 +17,6 @@ namespace cp2p {
     namespace asio = boost::asio;
     using tcp = asio::ip::tcp;
 
-    // forward declaration
-    class Node;
-
     /**
      * @class Connection
      *
@@ -37,7 +34,7 @@ namespace cp2p {
      */
     class Connection : public std::enable_shared_from_this<Connection> {
     public:
-        explicit Connection(asio::io_context& io_context, const std::shared_ptr<Node>& node);
+        explicit Connection(asio::io_context& io_context);
 
         ~Connection();
 
@@ -75,8 +72,6 @@ namespace cp2p {
         std::string remote_id_;
         std::atomic_bool is_initialized_;
         std::atomic_bool is_closed_;
-
-        std::weak_ptr<Node> node_;
     };
 
 } // cp2p
