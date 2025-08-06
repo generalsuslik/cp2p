@@ -5,15 +5,15 @@
 #ifndef CP2P_HPP
 #define CP2P_HPP
 
-#include "crypto/inc/aes.hpp"
-#include "crypto/inc/rsa.hpp"
-#include "crypto/inc/util.hpp"
+#include "crypto/aes.hpp"
+#include "crypto/rsa.hpp"
+#include "crypto/util.hpp"
 
-#include "network/inc/connection.hpp"
-#include "network/inc/message.hpp"
-#include "network/inc/message_queue.hpp"
-#include "network/inc/node.hpp"
+#include "network/connection.hpp"
+#include "network/message.hpp"
+#include "network/message_queue.hpp"
+#include "network/node.hpp"
 
-#include "util/inc/util.hpp"
+#include "util/util.hpp"
 
 #endif //CP2P_HPP
