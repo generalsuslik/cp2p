@@ -25,6 +25,7 @@ target_include_directories(${TESTS}
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/crypto/inc
         ${CMAKE_SOURCE_DIR}/network/inc
+        ${CMAKE_SOURCE_DIR}/test
 )
 
 include_directories(
@@ -42,6 +43,7 @@ target_link_libraries(${TESTS}
 
         cp2p_crypto
         cp2p_network
+        test_util
 )
 
 target_compile_options(${TESTS} PRIVATE -g)

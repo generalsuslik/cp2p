@@ -2,9 +2,9 @@
 // Created by generalsuslik on 22.01.25.
 //
 
-#include "network/inc/connection.hpp"
-#include "network/inc/message.hpp"
-#include "network/inc/node.hpp"
+#include "network/connection.hpp"
+#include "network/message.hpp"
+#include "network/node.hpp"
 
 #include <iostream>
 

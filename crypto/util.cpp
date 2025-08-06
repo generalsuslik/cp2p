@@ -2,7 +2,7 @@
 // Created by generalsuslik on 25.04.25.
 //
 
-#include "../inc/util.hpp"
+#include "util.hpp"
 
 #include <openssl/evp.h>
 

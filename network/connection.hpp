@@ -5,7 +5,7 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
-#include "message.hpp"
+#include "network/message.hpp"
 #include "message_queue.hpp"
 
 #include <boost/asio.hpp>

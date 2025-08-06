@@ -4,10 +4,10 @@
 
 #include <gtest/gtest.h>
 
-#include "../../crypto/inc/aes.hpp"
-#include "../../network/inc/message.hpp"
+#include "crypto/aes.hpp"
+#include "network/message.hpp"
 
-#include "../test_util/test_util.hpp"
+#include "test_util/test_util.hpp"
 
 TEST(TestMessage, test_message_creation) {
     using namespace cp2p;

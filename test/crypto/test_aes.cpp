@@ -4,9 +4,9 @@
 
 #include <gtest/gtest.h>
 
-#include "../../crypto/inc/aes.hpp"
+#include "crypto/aes.hpp"
 
-#include "../test_util/test_util.hpp"
+#include "test_util/test_util.hpp"
 
 TEST(AES, test_encryption_decryption) {
     const auto& [aes_key, aes_iv] = cp2p::aes::generate_aes_key_iv();

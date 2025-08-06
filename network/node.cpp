@@ -4,9 +4,9 @@
 
 #include "node.hpp"
 
-#include "crypto/inc/aes.hpp"
-#include "crypto/inc/util.hpp"
-#include "util/inc/util.hpp"
+#include "crypto/aes.hpp"
+#include "crypto/util.hpp"
+#include "util/util.hpp"
 
 #include <boost/beast.hpp>
 #include <nlohmann/json.hpp>

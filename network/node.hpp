@@ -7,7 +7,7 @@
 
 #include "connection.hpp"
 
-#include "../../crypto/inc/rsa.hpp"
+#include "crypto/rsa.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>

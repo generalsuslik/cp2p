@@ -4,7 +4,7 @@
 
 #include "message.hpp"
 
-#include "crypto/inc/aes.hpp"
+#include "crypto/aes.hpp"
 
 #include <iomanip>
 #include <iostream>

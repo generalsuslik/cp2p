@@ -2,7 +2,7 @@
 // Created by generalsuslik on 25.01.25.
 //
 
-#include "../inc/rsa.hpp"
+#include "rsa.hpp"
 
 #include <openssl/err.h>
 #include <openssl/evp.h>

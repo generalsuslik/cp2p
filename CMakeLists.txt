@@ -62,23 +62,19 @@ endif ()
 set(SOURCES
         ${CMAKE_SOURCE_DIR}/util/inc/util.hpp
 
-        ${CMAKE_SOURCE_DIR}/include/cp2p.hpp
-
     CACHE INTERNAL ""
 )
 
 set(INCLUDE_DIRS
         ${CMAKE_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/crypto/inc
-        ${CMAKE_SOURCE_DIR}/network/inc
 
     CACHE INTERNAL ""
 )
 
 add_subdirectory(crypto)
 add_subdirectory(network)
-add_subdirectory(include)
 add_subdirectory(test)
+add_subdirectory(util)
 
 add_executable(${TARGET}
         ${CMAKE_SOURCE_DIR}/main.cpp
@@ -90,14 +86,6 @@ target_include_directories(${TARGET}
     PRIVATE
         ${CMAKE_SOURCE_DIR}/crypto
         ${CMAKE_SOURCE_DIR}/network
-)
-
-include_directories(
-        /usr/include
-        /usr/include/boost
-        /usr/include/fmt
-        /usr/include/spdlog
-        /usr/include/nlohmann
 )
 
 target_link_libraries(${TARGET}

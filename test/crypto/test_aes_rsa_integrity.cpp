@@ -4,9 +4,9 @@
 
 #include <gtest/gtest.h>
 
-#include "crypto/inc/aes.hpp"
-#include "crypto/inc/rsa.hpp"
-#include "../test_util/test_util.hpp"
+#include "crypto/aes.hpp"
+#include "crypto/rsa.hpp"
+#include "test_util/test_util.hpp"
 
 TEST(AES_RSA, aes_rsa_integrity) {
     using namespace cp2p;
