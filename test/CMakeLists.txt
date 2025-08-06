@@ -29,6 +29,8 @@ target_include_directories(${TESTS}
 add_subdirectory(network/proto)
 add_subdirectory(test_util)
 
+add_subdirectory(test_util)
+
 target_link_libraries(${TESTS}
     PRIVATE
         GTest::GTest
