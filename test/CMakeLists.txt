@@ -33,6 +33,8 @@ include_directories(
         /usr/include/gtest
 )
 
+add_subdirectory(test_util)
+
 target_link_libraries(${TESTS}
     PRIVATE
         GTest::GTest
