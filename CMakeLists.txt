@@ -65,6 +65,7 @@ set(INCLUDE_DIRS
     CACHE INTERNAL ""
 )
 
+add_subdirectory(application)
 add_subdirectory(crypto)
 add_subdirectory(network)
 add_subdirectory(test)
@@ -76,6 +77,8 @@ add_executable(${TARGET}
 
 target_include_directories(${TARGET}
     PRIVATE
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/application
         ${CMAKE_SOURCE_DIR}/crypto
         ${CMAKE_SOURCE_DIR}/network
         ${CMAKE_SOURCE_DIR}/util
@@ -83,6 +86,7 @@ target_include_directories(${TARGET}
 
 target_link_libraries(${TARGET}
     PRIVATE
+        cp2p_application
         cp2p_crypto
         cp2p_network
 )
