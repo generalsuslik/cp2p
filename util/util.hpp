@@ -13,7 +13,7 @@
 
 namespace cp2p {
 
-    constexpr std::uint8_t DELIMITER = '\255';
+    constexpr std::uint8_t DELIMITER = '\t';
 
     template <std::input_iterator Iter>
     std::string to_hex(Iter begin, Iter end) {
