@@ -51,7 +51,7 @@ namespace cp2p {
     template <typename Container>
     concept CMessageContainer = requires(Container container) {
         typename Container::value_type;
-        requires sizeof(Container::value_type) == 1;
+        requires sizeof(typename Container::value_type) == 1;
 
         typename Container::iterator;
         requires (

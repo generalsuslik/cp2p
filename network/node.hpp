@@ -33,6 +33,7 @@ namespace cp2p {
     class Node : public std::enable_shared_from_this<Node> {
     public:
         using ID = std::string;
+        using PublicKeyPtr = rsa::EVP_PKEY_ptr;
 
     public:
         struct NodeIdentity {
@@ -143,8 +144,6 @@ namespace cp2p {
          */
         void set_hub(bool val);
 
-        static ID generate_id(const std::string& public_key);
-
     private:
         /**
          * @brief Accepts incoming connections \n
@@ -186,13 +185,19 @@ namespace cp2p {
 
         std::string get_ip();
 
+        static ID generate_id(const std::string& public_key);
+
+        std::string generate_handshake_string() const;
+
     private:
         asio::io_context io_context_;
         std::thread io_thread_;
 
         tcp::acceptor acceptor_;
 
-        std::unordered_map<std::string, std::shared_ptr<Connection>> connections_; // "public key hash": conn
+        std::unordered_map<ID, std::shared_ptr<Connection>> connections_; // "public key hash": conn
+        std::unordered_map<ID, PublicKeyPtr> public_keys_; // "public key hash": public key
+
         std::mutex mutex_;
 
         std::atomic_bool is_hub_;

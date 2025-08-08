@@ -15,6 +15,30 @@
 #include <iostream>
 #include <utility>
 
+namespace {
+
+    using IDPair = std::pair<cp2p::Node::ID, cp2p::rsa::EVP_PKEY_ptr>;
+
+    template <cp2p::CMessageContainer MessageContainer>
+    IDPair parse_handshake_string(const MessageContainer& handshake_data) {
+        auto separator_it = std::ranges::find(handshake_data, cp2p::DELIMITER);
+        assert(separator_it != handshake_data.end());
+        assert(*separator_it == cp2p::DELIMITER);
+
+        std::string id;
+        for (auto it = handshake_data.begin(); it != separator_it; ++it) {
+            id.push_back(*it);
+        }
+
+        const std::vector<std::uint8_t> public_key_data(separator_it + 1, handshake_data.end());
+
+        assert(handshake_data.size() == public_key_data.size() + id.size() + 1);
+
+        return { id, cp2p::rsa::to_public_key(public_key_data) };
+    }
+
+} // namespace
+
 namespace cp2p {
 
     namespace beast = boost::beast;
@@ -136,18 +160,19 @@ namespace cp2p {
                     return;
                 }
 
-                const Message handshake(get_id(), MessageType::HANDSHAKE);
+                const Message handshake(generate_handshake_string(), MessageType::HANDSHAKE);
 
                 new_conn->connect(handshake,
                         [this, new_conn, on_success](const std::shared_ptr<Message>& msg) {
                     // processing ACCEPT msg
-                    const std::string id = msg->body();
+                    auto [id, pubkey_ptr] = parse_handshake_string(std::string(msg->body(), msg->body_length()));
 
                     new_conn->set_remote_id(id);
 
                     {
                         std::lock_guard lock(mutex_);
                         connections_[id] = new_conn;
+                        public_keys_.emplace(id, std::move(pubkey_ptr));
                     }
 
                     receive(new_conn);
@@ -331,14 +356,18 @@ namespace cp2p {
             [this, new_conn](const boost::system::error_code& ec) {
                 if (!ec) {
                     new_conn->accept([this, new_conn](const std::shared_ptr<Message>& msg){
-                        new_conn->set_remote_id(msg->body());
+
+                        auto [id, pubkey_ptr] = parse_handshake_string(std::string(msg->body(), msg->body_length()));
+
+                        new_conn->set_remote_id(id);
 
                         {
                             std::lock_guard lock(mutex_);
                             connections_[new_conn->get_remote_id()] = new_conn;
+                            public_keys_.emplace(new_conn->get_remote_id(), std::move(pubkey_ptr));
                         }
 
-                        const Message approve(get_id(), MessageType::ACCEPT);
+                        const Message approve(generate_handshake_string(), MessageType::ACCEPT);
                         new_conn->deliver(approve);
 
                         spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
@@ -524,6 +553,12 @@ namespace cp2p {
         }
 
         return "0.0.0.0";
+    }
+
+    std::string Node::generate_handshake_string() const {
+        std::stringstream message_stream;
+        message_stream << get_id() << DELIMITER << identity_->rsa.to_public_string();
+        return message_stream.str();
     }
 
 

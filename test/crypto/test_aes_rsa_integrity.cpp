@@ -9,9 +9,9 @@
 #include "test_util/test_util.hpp"
 
 TEST(AES_RSA, aes_rsa_integrity) {
-    using namespace cp2p;
-
     constexpr std::uint8_t DELIMITER = '\t';
+
+    using namespace cp2p;
 
     rsa::RSAKeyPair rsa;
     const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
