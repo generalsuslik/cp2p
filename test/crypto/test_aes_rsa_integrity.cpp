@@ -11,7 +11,7 @@
 TEST(AES_RSA, aes_rsa_integrity) {
     using namespace cp2p;
 
-    constexpr std::uint8_t DELIMITER = '\n';
+    constexpr std::uint8_t DELIMITER = '\t';
 
     rsa::RSAKeyPair rsa;
     const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
