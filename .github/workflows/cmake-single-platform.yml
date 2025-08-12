@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libboost-all-dev libssl-dev libspdlog-dev nlohmann-json3-dev libgtest-dev libprotobuf-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libboost-all-dev libssl-dev libspdlog-dev nlohmann-json3-dev libgtest-dev libprotobuf-dev protobuf-compiler
 
       - name: Make project & tests
         run: |
