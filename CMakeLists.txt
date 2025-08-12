@@ -5,6 +5,7 @@ set(TARGET cp2p_build)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -pipe")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -fsanitize=address")
 
@@ -59,6 +60,10 @@ else ()
     message(FATAL_ERROR "OpenSSL not found")
 endif ()
 
+#----Protobuf----#
+find_package(Protobuf REQUIRED)
+message(STATUS "Using protobuf ${Protobuf_VERSION}")
+
 set(INCLUDE_DIRS
         ${CMAKE_SOURCE_DIR}
 
@@ -82,6 +87,7 @@ target_include_directories(${TARGET}
         ${CMAKE_SOURCE_DIR}/crypto
         ${CMAKE_SOURCE_DIR}/network
         ${CMAKE_SOURCE_DIR}/util
+        ${CMAKE_BINARY_DIR}
 )
 
 target_link_libraries(${TARGET}
@@ -89,4 +95,5 @@ target_link_libraries(${TARGET}
         cp2p_application
         cp2p_crypto
         cp2p_network
+        ${Protobuf_LIBRARIES}
 )

@@ -8,6 +8,7 @@
 #include "connection.hpp"
 
 #include "crypto/rsa.hpp"
+#include "network/message.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
@@ -22,6 +23,10 @@ namespace cp2p {
     namespace http = beast::http;
 
     using json = nlohmann::json;
+
+    using StrMessage = Message<std::string>;
+    using VecMessage = Message<std::vector<std::uint8_t>>;
+    using MessagePtr = std::shared_ptr<VecMessage>;
 
     /**
      * @brief Represents a node in the network \n
@@ -88,13 +93,13 @@ namespace cp2p {
          *
          * @param message message to send
          */
-        void broadcast(const Message& message);
+        void broadcast(const VecMessage& message);
 
         void send_message(const std::string& id, const std::string& message);
 
-        void send_message(const std::string& id, const Message& message);
+        void send_message(const std::string& id, const VecMessage& message);
 
-        void send_message(const std::string& id, const Message& message, const std::function<void()>& on_success);
+        void send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success);
 
         /**
          * @brief Sends message to node {id}
@@ -102,7 +107,7 @@ namespace cp2p {
          * @param id node-to-send-message's id
          * @param message message to send
          */
-        void do_send_message(const std::string& id, const Message& message);
+        void do_send_message(const std::string& id, const VecMessage& message);
 
         /**
          * @brief Sends message to node {id}
@@ -111,7 +116,7 @@ namespace cp2p {
          * @param message message to send
          * @param on_success callback called after a message is sent
          */
-        void do_send_message(const std::string& id, const Message& message, const std::function<void()>& on_success);
+        void do_send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success);
 
         /**
          * @brief Disconnects from all connected nodes
@@ -188,6 +193,8 @@ namespace cp2p {
         static ID generate_id(const std::string& public_key);
 
         std::string generate_handshake_string() const;
+
+        VecMessage generate_handshake() const;
 
     private:
         asio::io_context io_context_;

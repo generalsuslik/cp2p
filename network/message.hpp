@@ -7,14 +7,16 @@
 
 #include <nlohmann/json.hpp>
 
-#include <cstdint>
+#include "proto/message.pb.h"
+
+#include "crypto/aes.hpp"
+#include "util/util.hpp"
 
 namespace cp2p {
 
     enum class MessageType : uint32_t {
         ACCEPT,
         DISCONNECT,
-        FILE, // yet not supported
         HANDSHAKE,
         SEARCH,
         SEARCH_RESPONSE,
@@ -25,74 +27,186 @@ namespace cp2p {
      * @class Message
      * @brief The Message class is a representation of a communication or notification.
      */
+    template <CMessageContainer MessageContainer>
     class Message {
     public:
-        struct message_header {
-            std::uint32_t message_length = 0;
-            MessageType message_type = MessageType::TEXT;
-            std::chrono::system_clock::time_point timestamp = std::chrono::system_clock::now();
-        };
+        using value_type = std::uint8_t;
 
-        enum : uint32_t {
-            HEADER_LENGTH = sizeof(message_header),
-            MAX_BODY_LENGTH = 1024,
-        };
+    public:
+        Message() = default;
 
-        Message();
+        explicit Message(const MessageContainer& message, const MessageType type = MessageType::TEXT)
+            : type_(type)
+        {
+            set_message_type(type);
+            set_message(message);
+        }
 
-        explicit Message(const std::string& message, MessageType type = MessageType::TEXT);
+        void encrypt(const std::vector<std::uint8_t>& aes_key, const std::vector<std::uint8_t>& aes_iv) {
+            if (message_.has_aes()) {
+                throw std::runtime_error("Message is already encrypted");
+            }
 
-        explicit Message(const nlohmann::json& json, MessageType type = MessageType::TEXT);
+            set_aes(aes_key, aes_iv);
+            do_encrypt();
+        }
 
-        void encrypt();
+        void decrypt() {
+            const auto& aes_key = get_aes_key();
+            const auto& aes_iv = get_aes_iv();
 
-        void decrypt();
+            const auto& message = get_vec_message();
+            const auto& decrypted_message = aes::aes_decrypt(message, aes_key, aes_iv);
 
-        [[nodiscard]]
-        nlohmann::json to_json() const;
-
-        [[nodiscard]]
-        const char* data() const;
-
-        char* data();
-
-        [[nodiscard]]
-        message_header header() const;
-
-        [[nodiscard]]
-        MessageType type() const;
+            set_message(decrypted_message);
+        }
 
         [[nodiscard]]
-        std::size_t length() const;
+        TEncryptedMessage get() const {
+            return message_;
+        }
 
         [[nodiscard]]
-        std::size_t size() const;
+        std::string serialize_to_string() const {
+            return message_.SerializeAsString();
+        }
+
+        void parse_from_array(const char* ptr, const std::size_t size) {
+            message_.ParseFromArray(ptr, size);
+        }
+
+        TEncryptedMessage_TMessageHeader* get_mut_header() {
+            return message_.mutable_message_header();
+        }
 
         [[nodiscard]]
-        const char* body() const;
-
-        char* body();
-
-        [[nodiscard]]
-        std::size_t body_length() const;
-
-        void set_body_length(std::size_t length);
-
-        bool decode_header();
-
-        void encode_header();
+        TEncryptedMessage_TMessageHeader get_header() const {
+            return message_.message_header();
+        }
 
         [[nodiscard]]
-        bool empty() const;
+        MessageContainer get_message() const {
+            std::string message_str(message_.message().data(), message_.message().size());
+            return MessageContainer(message_str.begin(), message_str.end());
+        }
+
+        [[nodiscard]]
+        std::uint64_t size() const {
+            const auto header = get_header();
+            return header.message_length();
+        }
+
+        [[nodiscard]]
+        const char* data() const {
+            return message_.message().data();
+        }
+
+        char* data() {
+            return message_.mutable_message()->data();
+        }
+
+        [[nodiscard]]
+        MessageType get_type() const {
+            const auto header = get_header();
+            return static_cast<MessageType>(header.message_type());
+        }
+
+    private:
+        void set_aes(const std::vector<std::uint8_t>& aes_key, const std::vector<std::uint8_t>& aes_iv) {
+            TEncryptedMessage_TAes* aes = message_.mutable_aes();
+
+            aes->set_aes(aes_key.data(), aes_key.size());
+            aes->set_aes_len(aes_key.size());
+
+            aes->set_iv(aes_iv.data(), aes_iv.size());
+            aes->set_iv_len(aes_iv.size());
+        }
+
+        void do_encrypt() {
+            const auto& aes_key = get_aes_key();
+            const auto& aes_iv = get_aes_iv();
+
+            const auto& encrypted_message = aes::aes_encrypt(
+                message_.message(),
+                aes_key,
+                aes_iv
+            );
+            set_message(encrypted_message);
+        }
+
+        [[nodiscard]]
+        std::vector<std::uint8_t> get_vec_message() const {
+            const auto& message = message_.message();
+
+            const auto* data = reinterpret_cast<const std::uint8_t*>(message.data());
+            std::vector<std::uint8_t> message_vec(data, data + message_.message_header().message_length());
+            return message_vec;
+        }
+
+        [[nodiscard]]
+        std::vector<std::uint8_t> get_aes_key() const {
+            const TEncryptedMessage_TAes* aes = &message_.aes();
+
+            const auto* data = reinterpret_cast<const std::uint8_t*>(aes->aes().data());
+            std::vector<std::uint8_t> aes_key(data, data + aes->aes_len());
+            return aes_key;
+        }
+
+        [[nodiscard]]
+        std::vector<std::uint8_t> get_aes_iv() const {
+            const TEncryptedMessage_TAes* aes = &message_.aes();
+
+            const auto* data = reinterpret_cast<const std::uint8_t*>(aes->iv().data());
+            std::vector<std::uint8_t> aes_iv(data, data + aes->iv_len());
+            return aes_iv;
+        }
+
+        void set_message(const MessageContainer& message) {
+            TEncryptedMessage_TMessageHeader* header = get_mut_header();
+            header->set_message_length(message.size());
+
+            message_.set_message(message.data(), message.size());
+        }
+
+        void set_message_type(const MessageType type) {
+            TEncryptedMessage_TMessageHeader* header = get_mut_header();
+
+            switch (type) {
+                case MessageType::ACCEPT:
+                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_ACCEPT);
+                    break;
+                case MessageType::DISCONNECT:
+                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_DISCONNECT);
+                    break;
+                case MessageType::HANDSHAKE:
+                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_HANDSHAKE);
+                    break;
+                case MessageType::SEARCH:
+                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_SEARCH);
+                    break;
+                case MessageType::SEARCH_RESPONSE:
+                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_SEARCH_RESPONSE);
+                    break;
+                default:
+                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_TEXT);
+                    break;
+            }
+        }
 
         friend std::ostream& operator<<(std::ostream& os, const Message& message);
 
     private:
-        char data_[HEADER_LENGTH + MAX_BODY_LENGTH];
-        std::string body_;
-        std::size_t body_length_;
-        message_header header_;
+        TEncryptedMessage message_;
+        MessageType type_ = MessageType::TEXT;
     };
+
+    template <CMessageContainer MessageContainer>
+    std::ostream& operator<<(std::ostream& os, const Message<MessageContainer>& message) {
+        for (const auto& byte : message.get_message()) {
+            os << byte;
+        }
+        return os;
+    }
 
 
 } // cp2p

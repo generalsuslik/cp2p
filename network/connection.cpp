@@ -25,15 +25,15 @@ namespace cp2p {
         return socket_;
     }
 
-    void Connection::start(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+    void Connection::start(const std::function<void(const MessagePtr&)>& on_success) {
         read_header(on_success);
     }
 
-    void Connection::accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+    void Connection::accept(const std::function<void(const MessagePtr&)>& on_success) {
         read_header(on_success);
     }
 
-    void Connection::connect(const Message& handshake, const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+    void Connection::connect(const VecMessage& handshake, const std::function<void(const MessagePtr&)>& on_success) {
         if (is_closed_) {
             return;
         }
@@ -43,12 +43,24 @@ namespace cp2p {
         accept(on_success);
     }
 
-    void Connection::disconnect(const Message& handshake, const std::function<void()>& on_success) {
+    void Connection::disconnect(const StrMessage& handshake, const std::function<void()>& on_success) {
         auto self = shared_from_this();
+
+        std::string data = handshake.serialize_to_string();
+
+        // Send length prefix (uint32_t in network byte order)
+        const auto len = static_cast<uint32_t>(data.size());
+        std::uint32_t len_net = htonl(len);
+
+        const auto send_data = std::make_shared<SendData>(len_net, std::move(data));
+
+        std::vector<asio::const_buffer> buffers;
+        buffers.emplace_back(asio::buffer(&send_data->len_net, sizeof(send_data->len_net)));
+        buffers.emplace_back(asio::buffer(send_data->payload));
 
         async_write(
             socket_,
-            asio::buffer(handshake.data(), handshake.size()),
+            buffers,
             [this, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (ec) {
                     spdlog::error("[Connection::disconnect] {}", ec.message());
@@ -105,7 +117,7 @@ namespace cp2p {
         remote_id_ = id;
     }
 
-    void Connection::deliver(const Message& msg) {
+    void Connection::deliver(const VecMessage& msg) {
         if (is_closed_) {
             return;
         }
@@ -113,7 +125,7 @@ namespace cp2p {
         post(socket_.get_executor(),
             [this, msg] {
                 const bool write_in_progress = !message_queue_.empty();
-                message_queue_.push_back(std::make_shared<Message>(msg));
+                message_queue_.push_back(std::make_shared<VecMessage>(msg));
                 if (!write_in_progress) {
                     send_message();
                 }
@@ -127,8 +139,26 @@ namespace cp2p {
 
         auto self = shared_from_this();
 
-        async_write(socket_,
-            asio::buffer(message_queue_.front()->data(), message_queue_.front()->size()),
+        const auto& message = message_queue_.front();
+        if (!message) {
+            return;
+        }
+
+        std::string data = message->serialize_to_string();
+
+        // Send length prefix (uint32_t in network byte order)
+        const auto len = static_cast<uint32_t>(data.size());
+        std::uint32_t len_net = htonl(len);
+
+        const auto send_data = std::make_shared<SendData>(len_net, std::move(data));
+
+        std::vector<asio::const_buffer> buffers;
+        buffers.emplace_back(asio::buffer(&send_data->len_net, sizeof(send_data->len_net)));
+        buffers.emplace_back(asio::buffer(send_data->payload));
+
+        async_write(
+            socket_,
+            buffers,
             [this, self](const boost::system::error_code& ec, std::size_t) {
                 if (is_closed_ || ec == asio::error::operation_aborted) {
                     return;
@@ -152,22 +182,22 @@ namespace cp2p {
         return !is_closed_;
     }
 
-    void Connection::read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+    void Connection::read_header(const std::function<void(const MessagePtr&)>& on_success) {
         if (is_closed_) {
             return;
         }
 
         auto self = shared_from_this();
-        auto msg = std::make_shared<Message>();
+        auto len_buf = std::make_shared<std::array<char, 4>>();
 
         async_read(socket_,
-            asio::buffer(msg->data(), Message::HEADER_LENGTH),
-            [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
+            asio::buffer(len_buf->data(), len_buf->size()),
+            [this, len_buf = std::move(len_buf), self, on_success = on_success](const boost::system::error_code& ec, std::size_t) {
                 if (is_closed_ || ec == asio::error::operation_aborted) {
                     return;
                 }
 
-                if (ec || !msg->decode_header()) {
+                if (ec) {
                     if (ec == asio::error::eof) {
                         spdlog::info("[Connection::read_header] Disconnected from {}", remote_id_);
                         close();
@@ -179,21 +209,28 @@ namespace cp2p {
                     return;
                 }
 
-                read_body(msg, on_success);
+                uint32_t len_net;
+                std::memcpy(&len_net, len_buf->data(), 4);
+                const uint32_t len = ntohl(len_net);
+
+                read_body(len, on_success);
             });
     }
 
-    void Connection::read_body(const std::shared_ptr<Message>& msg,
-                               const std::function<void(const std::shared_ptr<Message>&)>& on_success) {
+    void Connection::read_body(
+        const std::uint32_t size,
+        const std::function<void(const MessagePtr&)>& on_success
+    ) {
         if (is_closed_) {
             return;
         }
 
         auto self = shared_from_this();
+        auto buffer = std::make_shared<std::vector<char>>(size);
 
         async_read(socket_,
-            asio::buffer(msg->body(), msg->body_length()),
-            [this, msg, self, on_success](const boost::system::error_code& ec, std::size_t) {
+            asio::buffer(buffer->data(), size),
+            [this, buffer = std::move(buffer), self, on_success](const boost::system::error_code& ec, std::size_t) {
                 if (is_closed_ || ec == asio::error::operation_aborted) {
                     return;
                 }
@@ -205,7 +242,10 @@ namespace cp2p {
                     return;
                 }
 
-                if (on_success && (msg->type() == MessageType::HANDSHAKE || msg->type() == MessageType::ACCEPT)) {
+                auto msg = std::make_shared<VecMessage>();
+                msg->parse_from_array(buffer->data(), buffer->size());
+
+                if (on_success && (msg->get_type() == MessageType::HANDSHAKE || msg->get_type() == MessageType::ACCEPT)) {
                     on_success(msg);
                     is_initialized_ = true;
                 } else if (!is_initialized_ && on_success) {

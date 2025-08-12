@@ -4,7 +4,6 @@
 
 #include "node.hpp"
 
-#include "crypto/aes.hpp"
 #include "crypto/util.hpp"
 #include "util/util.hpp"
 
@@ -131,7 +130,7 @@ namespace cp2p {
         const std::uint16_t hub_port = hub["port"].get<std::uint16_t>();
 
         connect_to(hub_host, hub_port, [this, hub_id, target_id] {
-            const Message search_node_message(target_id, MessageType::SEARCH);
+            const VecMessage search_node_message(get_container_from_string(target_id), MessageType::SEARCH);
             do_send_message(hub_id, search_node_message);
         });
     }
@@ -160,27 +159,28 @@ namespace cp2p {
                     return;
                 }
 
-                const Message handshake(generate_handshake_string(), MessageType::HANDSHAKE);
+                const VecMessage handshake = generate_handshake();
 
-                new_conn->connect(handshake,
-                        [this, new_conn, on_success](const std::shared_ptr<Message>& msg) {
-                    // processing ACCEPT msg
-                    auto [id, pubkey_ptr] = parse_handshake_string(std::string(msg->body(), msg->body_length()));
+                new_conn->connect(
+                    handshake,
+                    [this, new_conn, on_success](const MessagePtr& msg) {
+                        // processing ACCEPT msg
+                        auto [id, pubkey_ptr] = parse_handshake_string(msg->get_message());
 
-                    new_conn->set_remote_id(id);
+                        new_conn->set_remote_id(id);
 
-                    {
-                        std::lock_guard lock(mutex_);
-                        connections_[id] = new_conn;
-                        public_keys_.emplace(id, std::move(pubkey_ptr));
-                    }
+                        {
+                            std::lock_guard lock(mutex_);
+                            connections_[id] = new_conn;
+                            public_keys_.emplace(id, std::move(pubkey_ptr));
+                        }
 
-                    receive(new_conn);
-                    spdlog::info("[Node::connect_to] Connected to {}", id);
+                        receive(new_conn);
+                        spdlog::info("[Node::connect_to] Connected to {}", id);
 
-                    if (on_success) {
-                        on_success();
-                    }
+                        if (on_success) {
+                            on_success();
+                        }
                 });
             });
     }
@@ -190,7 +190,7 @@ namespace cp2p {
      *
      * @param message message to send
      */
-    void Node::broadcast(const Message& message) {
+    void Node::broadcast(const VecMessage& message) {
         std::lock_guard lock(mutex_);
 
         for (const auto& conn : connections_ | std::views::values) {
@@ -199,25 +199,17 @@ namespace cp2p {
     }
 
     void Node::send_message(const std::string& id, const std::string& message) {
-        const Message msg(message);
-        do_send_message(id, msg);
+        VecMessage mes(get_container_from_string(message));
+        do_send_message(id, mes);
     }
 
-    // void Node::send_message(const std::string& id, const Message& message) {
-    //     // now we have to encrypt the message before sending it
-    //
-    //     if (message.type() != MessageType::TEXT) {
-    //         spdlog::error("[Node::send_message] message type is not TEXT");
-    //         return;
-    //     }
-    //
-    //     const std::string& message_body = message.body();
-    //     const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
-    //     const auto& encrypted_body = aes::aes_encrypt(message_body, aes_key, aes_iv);
-    //
-    //     const auto& encrypted_aes_key = rsa::RSAKeyPair::encrypt(aes_key.begin(), aes_key.end());
-    //     const auto& encrypted_aes_iv = rsa::RSAKeyPair::encrypt(aes_iv.begin(), aes_iv.end());
-    // }
+    void Node::send_message(const std::string& id, const VecMessage& message) {
+        do_send_message(id, message);
+    }
+
+    void Node::send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success) {
+        do_send_message(id, message, on_success);
+    }
 
     /**
      * @brief Sends message to node {id}
@@ -225,7 +217,7 @@ namespace cp2p {
      * @param id node-to-send-a-message's id
      * @param message message to send
      */
-    void Node::do_send_message(const std::string& id, const Message& message) {
+    void Node::do_send_message(const std::string& id, const VecMessage& message) {
         std::lock_guard lock(mutex_);
 
         const auto it = connections_.find(id);
@@ -244,7 +236,7 @@ namespace cp2p {
      * @param message message to send
      * @param on_success callback called after a message is sent
      */
-    void Node::do_send_message(const std::string& id, const Message& message, const std::function<void()>& on_success) {
+    void Node::do_send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success) {
         std::lock_guard lock(mutex_);
 
         const auto it = connections_.find(id);
@@ -267,7 +259,6 @@ namespace cp2p {
             for (const auto& id : connections_ | std::views::keys) {
                 disconnect(id);
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
             connections_.clear();
 
             spdlog::info("Disconnected from all connected nodes");
@@ -290,9 +281,7 @@ namespace cp2p {
         const Message disconnect_message(get_id(), MessageType::DISCONNECT);
 
         spdlog::info("[Node::disconnect] Disconnecting...");
-        connections_[id]->disconnect(disconnect_message, [this, &id] {
-            connections_[id]->close();
-        });
+        connections_[id]->close();
     }
 
     void Node::remove_connection(const std::string& id) {
@@ -355,9 +344,9 @@ namespace cp2p {
         acceptor_.async_accept(new_conn->socket(),
             [this, new_conn](const boost::system::error_code& ec) {
                 if (!ec) {
-                    new_conn->accept([this, new_conn](const std::shared_ptr<Message>& msg){
+                    new_conn->accept([this, new_conn](const MessagePtr& msg){
 
-                        auto [id, pubkey_ptr] = parse_handshake_string(std::string(msg->body(), msg->body_length()));
+                        auto [id, pubkey_ptr] = parse_handshake_string(msg->get_message());
 
                         new_conn->set_remote_id(id);
 
@@ -367,7 +356,7 @@ namespace cp2p {
                             public_keys_.emplace(new_conn->get_remote_id(), std::move(pubkey_ptr));
                         }
 
-                        const Message approve(generate_handshake_string(), MessageType::ACCEPT);
+                        const VecMessage approve(get_container_from_string(generate_handshake_string()), MessageType::ACCEPT);
                         new_conn->deliver(approve);
 
                         spdlog::info("[Node::accept] Accepted from {}", new_conn->get_remote_id());
@@ -380,33 +369,27 @@ namespace cp2p {
     }
 
     void Node::receive(const std::shared_ptr<Connection>& conn) {
-        conn->start([this, conn](const std::shared_ptr<Message>& msg) {
-            if (msg->type() == MessageType::DISCONNECT) {
-                const std::string id = msg->body();
+        conn->start([this, conn](const MessagePtr& msg) {
+            if (msg->get_type() == MessageType::DISCONNECT) {
+                const std::string id = get_string_from_container(msg->get_message());
 
-                connections_[id]->close();
-                remove_connection(id);
+                {
+                    std::lock_guard lock(mutex_);
+                    connections_[id]->close();
+                    remove_connection(id);
+                }
 
                 spdlog::info("[Node::receive] Disconnected from {}", id);
-            } else if (msg->type() == MessageType::TEXT) {
-                spdlog::info("Received [{}]: {}", conn->get_remote_id(), std::string(msg->body(), msg->body_length()));
-            } else if (msg->type() == MessageType::SEARCH) {
-                const json node = search_node(msg->body());
+            } else if (msg->get_type() == MessageType::TEXT) {
+                spdlog::info("Received [{}]: {}", conn->get_remote_id(), get_string_from_container(msg->get_message()));
+            } else if (msg->get_type() == MessageType::SEARCH) {
+                const json node = search_node(get_string_from_container(msg->get_message()));
                 std::cout << node << std::endl;
             }
         });
     }
 
     json Node::search_node(const std::string& target_id) {
-        // tcp::resolver resolver(io_context_);
-
-        // json res;
-
-        // for (const auto& conn : connections_ | std::views::values) {
-        //     if (conn->get_remote_id() == target_id) {
-        //         res = conn->get_remote_no
-        //     }
-        // }
         return nullptr;
     }
 
@@ -559,6 +542,14 @@ namespace cp2p {
         std::stringstream message_stream;
         message_stream << get_id() << DELIMITER << identity_->rsa.to_public_string();
         return message_stream.str();
+    }
+
+    VecMessage Node::generate_handshake() const {
+        const std::string handshake_string = generate_handshake_string();
+        const auto& handshake_vec = get_container_from_string(handshake_string);
+
+        VecMessage message(handshake_vec, MessageType::HANDSHAKE);
+        return message;
     }
 
 

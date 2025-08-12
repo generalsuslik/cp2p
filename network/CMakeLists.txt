@@ -13,31 +13,27 @@ set(SOURCES
         ${CMAKE_SOURCE_DIR}/network/message_queue.hpp
 )
 
+add_subdirectory(proto)
+
 add_library(cp2p_network
         ${SOURCES}
 )
 
 target_include_directories(${TARGET}
-        PRIVATE
+    PUBLIC
         ${CMAKE_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_link_libraries(${TARGET}
-        PRIVATE
+    PRIVATE
         Boost::system
         nlohmann_json::nlohmann_json
         spdlog::spdlog_header_only
 
         cp2p_crypto
+        network_proto
         util
-)
-
-include_directories(
-        /usr/include
-        /usr/include/boost
-        /usr/include/fmt
-        /usr/include/spdlog
-        /usr/include/nlohmann
 )
 
 target_compile_features(${TARGET} PRIVATE cxx_std_20)

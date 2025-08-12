@@ -17,6 +17,10 @@ namespace cp2p {
     namespace asio = boost::asio;
     using tcp = asio::ip::tcp;
 
+    using StrMessage = Message<std::string>;
+    using VecMessage = Message<std::vector<std::uint8_t>>;
+    using MessagePtr = std::shared_ptr<VecMessage>;
+
     /**
      * @class Connection
      *
@@ -33,6 +37,12 @@ namespace cp2p {
      * receive data and disconnecting once the connection is no longer needed.
      */
     class Connection : public std::enable_shared_from_this<Connection> {
+    private:
+        struct SendData {
+            uint32_t len_net;
+            std::string payload;
+        };
+
     public:
         explicit Connection(asio::io_context& io_context);
 
@@ -40,13 +50,13 @@ namespace cp2p {
 
         tcp::socket& socket();
 
-        void start(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
+        void start(const std::function<void(const MessagePtr&)>& on_success);
 
-        void accept(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
+        void accept(const std::function<void(const MessagePtr&)>& on_success);
 
-        void connect(const Message& handshake, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
+        void connect(const VecMessage& handshake, const std::function<void(const MessagePtr&)>& on_success);
 
-        void disconnect(const Message& handshake, const std::function<void()>& on_success);
+        void disconnect(const StrMessage& handshake, const std::function<void()>& on_success);
 
         void close();
 
@@ -56,18 +66,18 @@ namespace cp2p {
 
         bool is_open() const;
 
-        void deliver(const Message& msg);
+        void deliver(const VecMessage& msg);
 
     private:
         void send_message();
 
-        void read_header(const std::function<void(const std::shared_ptr<Message>&)>& on_success);
+        void read_header(const std::function<void(const MessagePtr&)>& on_success);
 
-        void read_body(const std::shared_ptr<Message>& msg, const std::function<void(const std::shared_ptr<Message>&)>& on_success);
+        void read_body(std::uint32_t size, const std::function<void(const MessagePtr&)>& on_success);
 
     private:
         tcp::socket socket_;
-        MessageQueue<std::shared_ptr<Message>> message_queue_;
+        MessageQueue<MessagePtr> message_queue_;
 
         std::string remote_id_;
         std::atomic_bool is_initialized_;

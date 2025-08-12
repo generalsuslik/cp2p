@@ -66,6 +66,8 @@ namespace cp2p {
         );
 
         { container.size() } -> std::convertible_to<size_t>;
+        { std::begin(container) } -> std::random_access_iterator;
+        { std::end(container) } -> std::sentinel_for<decltype(std::begin(container))>;
     };
 
     template <CMessageContainer Container>

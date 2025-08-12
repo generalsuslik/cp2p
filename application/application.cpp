@@ -80,7 +80,7 @@ void Application::run(int argc, char* argv[]) {
                 std::cout << conn->get_remote_id() << std::endl;
             }
         } else {
-            cp2p::Message msg(line);
+            cp2p::VecMessage msg(cp2p::get_container_from_string(line));
             node->broadcast(msg);
         }
     }

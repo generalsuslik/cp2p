@@ -7,9 +7,7 @@ enable_testing()
 
 set(TESTS tests)
 
-add_executable(${TESTS}
-        ${SOURCES}
-
+add_executable(tests
         ${CMAKE_SOURCE_DIR}/test/main.cpp
         ${CMAKE_SOURCE_DIR}/test/crypto/test_aes.cpp
         ${CMAKE_SOURCE_DIR}/test/crypto/test_aes_rsa_integrity.cpp
@@ -26,13 +24,10 @@ target_include_directories(${TESTS}
         ${CMAKE_SOURCE_DIR}/crypto/inc
         ${CMAKE_SOURCE_DIR}/network/inc
         ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_BINARY_DIR}
 )
 
-include_directories(
-        /usr/include
-        /usr/include/gtest
-)
-
+add_subdirectory(network/proto)
 add_subdirectory(test_util)
 
 target_link_libraries(${TESTS}
@@ -45,6 +40,7 @@ target_link_libraries(${TESTS}
 
         cp2p_crypto
         cp2p_network
+        test_network_proto
         test_util
 )
 

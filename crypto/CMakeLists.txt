@@ -20,9 +20,4 @@ target_link_libraries(cp2p_crypto
         util
 )
 
-include_directories(
-        /usr/include
-        /usr/include/openssl
-)
-
 target_compile_features(cp2p_crypto PRIVATE cxx_std_20)
