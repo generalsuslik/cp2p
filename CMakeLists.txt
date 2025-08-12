@@ -73,7 +73,6 @@ set(INCLUDE_DIRS
 add_subdirectory(application)
 add_subdirectory(crypto)
 add_subdirectory(network)
-add_subdirectory(test)
 add_subdirectory(util)
 
 add_executable(${TARGET}
@@ -97,3 +96,5 @@ target_link_libraries(${TARGET}
         cp2p_network
         ${Protobuf_LIBRARIES}
 )
+
+add_subdirectory(test)
