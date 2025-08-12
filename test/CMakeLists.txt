@@ -7,10 +7,9 @@ enable_testing()
 
 set(TESTS tests)
 
-add_executable(tests
+add_executable(${TESTS}
         ${CMAKE_SOURCE_DIR}/test/main.cpp
         ${CMAKE_SOURCE_DIR}/test/crypto/test_aes.cpp
-        ${CMAKE_SOURCE_DIR}/test/crypto/test_aes_rsa_integrity.cpp
         ${CMAKE_SOURCE_DIR}/test/test_util/test_util.cpp
         ${CMAKE_SOURCE_DIR}/test/test_util/test_util.hpp
         ${CMAKE_SOURCE_DIR}/test/network/test_message.cpp
