@@ -34,9 +34,11 @@ namespace cp2p::aes {
      *
      * @throws std::runtime_error on failure.
      */
-    std::vector<unsigned char> aes_encrypt(const std::string& plaintext,
-                                           const std::vector<unsigned char>& key,
-                                           const std::vector<unsigned char>& iv);
+    std::vector<unsigned char> aes_encrypt(
+        const std::string& plaintext,
+        const std::vector<unsigned char>& key,
+        const std::vector<unsigned char>& iv
+    );
 
     /**
      * Decrypts given ciphertext using AES-256-CBC.
@@ -48,9 +50,11 @@ namespace cp2p::aes {
      *
      * @throws std::runtime_error on failure.
      */
-    std::string aes_decrypt(const std::vector<unsigned char>& ciphertext,
-                            const std::vector<unsigned char>& key,
-                            const std::vector<unsigned char>& iv);
+    std::vector<unsigned char> aes_decrypt(
+        const std::vector<unsigned char>& ciphertext,
+        const std::vector<unsigned char>& key,
+        const std::vector<unsigned char>& iv
+    );
 
 
 } // cp2p

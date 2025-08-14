@@ -30,9 +30,11 @@ namespace cp2p::aes {
         return { key, iv };
     }
 
-    std::vector<unsigned char> aes_encrypt(const std::string& plaintext,
-                                           const std::vector<unsigned char>& key,
-                                           const std::vector<unsigned char>& iv) {
+    std::vector<unsigned char> aes_encrypt(
+        const std::string& plaintext,
+        const std::vector<unsigned char>& key,
+        const std::vector<unsigned char>& iv
+    ) {
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
         if (!ctx) {
             throw std::runtime_error("Failed to create EVP_CIPHER_CTX: "
@@ -71,9 +73,11 @@ namespace cp2p::aes {
         return ciphertext;
     }
 
-    std::string aes_decrypt(const std::vector<unsigned char>& ciphertext,
-                            const std::vector<unsigned char>& key,
-                            const std::vector<unsigned char>& iv) {
+    std::vector<unsigned char> aes_decrypt(
+        const std::vector<unsigned char>& ciphertext,
+        const std::vector<unsigned char>& key,
+        const std::vector<unsigned char>& iv
+    ) {
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
         if (!ctx) {
             throw std::runtime_error("Failed to create EVP_CIPHER_CTX: "
@@ -108,8 +112,7 @@ namespace cp2p::aes {
         plaintext.resize(plaintext_len);
 
         EVP_CIPHER_CTX_free(ctx);
-        const auto decrypted = std::string(plaintext.begin(), plaintext.begin() + plaintext_len);
-        return decrypted;
+        return plaintext;
     }
 
 

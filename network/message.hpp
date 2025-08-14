@@ -42,13 +42,16 @@ namespace cp2p {
             set_message(message);
         }
 
-        void encrypt(const std::vector<std::uint8_t>& aes_key, const std::vector<std::uint8_t>& aes_iv) {
+        void encrypt() {
             if (message_.has_aes()) {
                 throw std::runtime_error("Message is already encrypted");
             }
 
+            const auto& [aes_key, aes_iv] = aes::generate_aes_key_iv();
+
             set_aes(aes_key, aes_iv);
             do_encrypt();
+            is_encrypted_ = true;
         }
 
         void decrypt() {
@@ -59,6 +62,7 @@ namespace cp2p {
             const auto& decrypted_message = aes::aes_decrypt(message, aes_key, aes_iv);
 
             set_message(decrypted_message);
+            is_encrypted_ = false;
         }
 
         [[nodiscard]]
@@ -91,6 +95,24 @@ namespace cp2p {
         }
 
         [[nodiscard]]
+        std::vector<std::uint8_t> get_aes_key() const {
+            const TEncryptedMessage_TAes* aes = &message_.aes();
+
+            const auto* data = reinterpret_cast<const std::uint8_t*>(aes->aes().data());
+            std::vector<std::uint8_t> aes_key(data, data + aes->aes_len());
+            return aes_key;
+        }
+
+        [[nodiscard]]
+        std::vector<std::uint8_t> get_aes_iv() const {
+            const TEncryptedMessage_TAes* aes = &message_.aes();
+
+            const auto* data = reinterpret_cast<const std::uint8_t*>(aes->iv().data());
+            std::vector<std::uint8_t> aes_iv(data, data + aes->iv_len());
+            return aes_iv;
+        }
+
+        [[nodiscard]]
         std::uint64_t size() const {
             const auto header = get_header();
             return header.message_length();
@@ -109,6 +131,11 @@ namespace cp2p {
         MessageType get_type() const {
             const auto header = get_header();
             return static_cast<MessageType>(header.message_type());
+        }
+
+        [[nodiscard]]
+        bool is_encrypted() const {
+            return is_encrypted_;
         }
 
     private:
@@ -136,29 +163,10 @@ namespace cp2p {
 
         [[nodiscard]]
         std::vector<std::uint8_t> get_vec_message() const {
-            const auto& message = message_.message();
+            const std::string& message = message_.message();
 
-            const auto* data = reinterpret_cast<const std::uint8_t*>(message.data());
-            std::vector<std::uint8_t> message_vec(data, data + message_.message_header().message_length());
+            const auto& message_vec = get_container_from_string(message);
             return message_vec;
-        }
-
-        [[nodiscard]]
-        std::vector<std::uint8_t> get_aes_key() const {
-            const TEncryptedMessage_TAes* aes = &message_.aes();
-
-            const auto* data = reinterpret_cast<const std::uint8_t*>(aes->aes().data());
-            std::vector<std::uint8_t> aes_key(data, data + aes->aes_len());
-            return aes_key;
-        }
-
-        [[nodiscard]]
-        std::vector<std::uint8_t> get_aes_iv() const {
-            const TEncryptedMessage_TAes* aes = &message_.aes();
-
-            const auto* data = reinterpret_cast<const std::uint8_t*>(aes->iv().data());
-            std::vector<std::uint8_t> aes_iv(data, data + aes->iv_len());
-            return aes_iv;
         }
 
         void set_message(const MessageContainer& message) {
@@ -198,6 +206,7 @@ namespace cp2p {
     private:
         TEncryptedMessage message_;
         MessageType type_ = MessageType::TEXT;
+        bool is_encrypted_ = false;
     };
 
     template <CMessageContainer MessageContainer>

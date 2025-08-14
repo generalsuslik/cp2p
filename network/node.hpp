@@ -93,11 +93,11 @@ namespace cp2p {
          *
          * @param message message to send
          */
-        void broadcast(const VecMessage& message);
+        void broadcast(VecMessage& message);
 
         void send_message(const std::string& id, const std::string& message);
 
-        void send_message(const std::string& id, const VecMessage& message);
+        void send_message(const std::string& id, VecMessage message);
 
         void send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success);
 
@@ -160,6 +160,10 @@ namespace cp2p {
 
         void receive(const std::shared_ptr<Connection>& conn);
 
+        void encrypt(const ID& target_id, const MessagePtr& message);
+
+        static void decrypt(const MessagePtr& message);
+
         json search_node(const std::string& target_id);
 
         json request_connection(const std::string& target_id);
@@ -198,7 +202,8 @@ namespace cp2p {
 
     private:
         asio::io_context io_context_;
-        std::thread io_thread_;
+        std::vector<std::thread> io_workers_;
+        inline static std::uint32_t num_workers = 1;
 
         tcp::acceptor acceptor_;
 

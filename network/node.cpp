@@ -76,15 +76,17 @@ namespace cp2p {
      * @brief Runs the node by creating a thread and running io_context in it
      */
     void Node::run() {
-        if (io_thread_.joinable() && is_active_) {
+        if (is_active_) {
             return;
         }
 
         is_active_ = true;
 
-        io_thread_ = std::thread([this] {
-            io_context_.run();
-        });
+        for (std::uint32_t i = 0; i < num_workers; ++i) {
+            io_workers_.emplace_back([this] {
+                io_context_.run();
+            });
+        }
 
         accept();
     }
@@ -109,8 +111,10 @@ namespace cp2p {
             acceptor_.close();
             io_context_.stop();
 
-            if (io_thread_.joinable()) {
-                io_thread_.join();
+            for (auto& th : io_workers_) {
+                if (th.joinable()) {
+                    th.join();
+                }
             }
         });
     }
@@ -190,7 +194,9 @@ namespace cp2p {
      *
      * @param message message to send
      */
-    void Node::broadcast(const VecMessage& message) {
+    void Node::broadcast(VecMessage& message) {
+        message.encrypt();
+
         std::lock_guard lock(mutex_);
 
         for (const auto& conn : connections_ | std::views::values) {
@@ -200,10 +206,12 @@ namespace cp2p {
 
     void Node::send_message(const std::string& id, const std::string& message) {
         VecMessage mes(get_container_from_string(message));
+        mes.encrypt();
         do_send_message(id, mes);
     }
 
-    void Node::send_message(const std::string& id, const VecMessage& message) {
+    void Node::send_message(const std::string& id, VecMessage message) {
+        message.encrypt();
         do_send_message(id, message);
     }
 
@@ -381,12 +389,27 @@ namespace cp2p {
 
                 spdlog::info("[Node::receive] Disconnected from {}", id);
             } else if (msg->get_type() == MessageType::TEXT) {
+                msg->decrypt();
                 spdlog::info("Received [{}]: {}", conn->get_remote_id(), get_string_from_container(msg->get_message()));
             } else if (msg->get_type() == MessageType::SEARCH) {
                 const json node = search_node(get_string_from_container(msg->get_message()));
                 std::cout << node << std::endl;
             }
         });
+    }
+
+    void Node::encrypt(const ID& target_id, const MessagePtr& message) {
+        auto it = public_keys_.find(target_id);
+        if (it == public_keys_.end()) {
+            spdlog::error("[Node::encrypt] id: {} not found", target_id);
+            return;
+        }
+
+        message->encrypt();
+    }
+
+    void Node::decrypt(const MessagePtr& message) {
+        message->decrypt();
     }
 
     json Node::search_node(const std::string& target_id) {

@@ -6,8 +6,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <iostream>
-
 namespace cp2p {
 
 

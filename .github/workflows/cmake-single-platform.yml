@@ -28,4 +28,4 @@ jobs:
           ninja -j$(nproc)
 
       - name: Run tests
-        run: cd test && ./tests
+        run: ctest
