@@ -89,6 +89,14 @@ target_include_directories(${TARGET}
         ${CMAKE_BINARY_DIR}
 )
 
+include_directories(
+        /usr/include
+        /usr/include/boost
+        /usr/include/fmt
+        /usr/include/spdlog
+        /usr/include/nlohmann
+)
+
 target_link_libraries(${TARGET}
     PRIVATE
         cp2p_application

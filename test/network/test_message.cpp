@@ -67,11 +67,11 @@ TEST(TestMessage, test_encrypt_decrypt_message) {
     ASSERT_EQ(decrypted_iv.size(), aes_iv.size());
     ASSERT_EQ(decrypted_iv, aes_iv);
 
-    const auto& decrypted_message = aes::aes_decrypt(
+    const auto& decrypted_message = get_string_from_container(aes::aes_decrypt(
         encrypted_serialized_vector,
         decrypted_aes,
         decrypted_iv
-    );
+    ));
     ASSERT_EQ(decrypted_message.size(), message_str.size());
     ASSERT_EQ(decrypted_message, message_str);
 }
