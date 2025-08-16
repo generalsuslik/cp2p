@@ -112,6 +112,16 @@ namespace cp2p {
             return aes_iv;
         }
 
+        void set_aes(const std::vector<std::uint8_t>& aes_key, const std::vector<std::uint8_t>& aes_iv) {
+            TEncryptedMessage_TAes* aes = message_.mutable_aes();
+
+            aes->set_aes(aes_key.data(), aes_key.size());
+            aes->set_aes_len(aes_key.size());
+
+            aes->set_iv(aes_iv.data(), aes_iv.size());
+            aes->set_iv_len(aes_iv.size());
+        }
+
         [[nodiscard]]
         std::uint64_t size() const {
             const auto header = get_header();
@@ -139,16 +149,6 @@ namespace cp2p {
         }
 
     private:
-        void set_aes(const std::vector<std::uint8_t>& aes_key, const std::vector<std::uint8_t>& aes_iv) {
-            TEncryptedMessage_TAes* aes = message_.mutable_aes();
-
-            aes->set_aes(aes_key.data(), aes_key.size());
-            aes->set_aes_len(aes_key.size());
-
-            aes->set_iv(aes_iv.data(), aes_iv.size());
-            aes->set_iv_len(aes_iv.size());
-        }
-
         void do_encrypt() {
             const auto& aes_key = get_aes_key();
             const auto& aes_iv = get_aes_iv();

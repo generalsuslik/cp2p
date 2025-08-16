@@ -28,12 +28,6 @@ void Application::run(int argc, char* argv[]) {
 
     auto node = std::make_shared<cp2p::Node>(host_, port_);
     node->run();
-    // std::cout << "Do you want to be a hub?" << std::endl;
-    // std::string ans;
-    // std::cin >> ans;
-    // if (ans == "y") {
-    //     node->set_hub(true);
-    // }
 
     std::string line;
     while (true) {
@@ -80,7 +74,7 @@ void Application::run(int argc, char* argv[]) {
                 std::cout << conn->get_remote_id() << std::endl;
             }
         } else {
-            cp2p::VecMessage msg(cp2p::get_container_from_string(line));
+            cp2p::MessagePtr msg = std::make_shared<cp2p::VecMessage>(cp2p::get_container_from_string(line));
             node->broadcast(msg);
         }
     }

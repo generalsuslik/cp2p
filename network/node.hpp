@@ -93,11 +93,11 @@ namespace cp2p {
          *
          * @param message message to send
          */
-        void broadcast(VecMessage& message);
+        void broadcast(const MessagePtr& message);
 
         void send_message(const std::string& id, const std::string& message);
 
-        void send_message(const std::string& id, VecMessage message);
+        void send_message(const std::string& id, const MessagePtr& message);
 
         void send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success);
 
@@ -107,7 +107,7 @@ namespace cp2p {
          * @param id node-to-send-message's id
          * @param message message to send
          */
-        void do_send_message(const std::string& id, const VecMessage& message);
+        void do_send_message(const std::string& id, const MessagePtr &message);
 
         /**
          * @brief Sends message to node {id}
@@ -162,7 +162,7 @@ namespace cp2p {
 
         void encrypt(const ID& target_id, const MessagePtr& message);
 
-        static void decrypt(const MessagePtr& message);
+        void decrypt(const MessagePtr& message) const;
 
         json search_node(const std::string& target_id);
 
