@@ -30,6 +30,10 @@ namespace {
         }
 
         const std::vector<std::uint8_t> public_key_data(separator_it + 1, handshake_data.end());
+        for (const auto& byte : public_key_data) {
+            std::cout << byte;
+        }
+        std::cout << std::endl;
 
         assert(handshake_data.size() == public_key_data.size() + id.size() + 1);
 
@@ -134,7 +138,7 @@ namespace cp2p {
         const std::uint16_t hub_port = hub["port"].get<std::uint16_t>();
 
         connect_to(hub_host, hub_port, [this, hub_id, target_id] {
-            const VecMessage search_node_message(get_container_from_string(target_id), MessageType::SEARCH);
+            auto search_node_message = std::make_shared<VecMessage>(get_container_from_string(target_id), MessageType::SEARCH);
             do_send_message(hub_id, search_node_message);
         });
     }
@@ -194,24 +198,23 @@ namespace cp2p {
      *
      * @param message message to send
      */
-    void Node::broadcast(VecMessage& message) {
-        message.encrypt();
-
+    void Node::broadcast(const MessagePtr& message) {
         std::lock_guard lock(mutex_);
 
         for (const auto& conn : connections_ | std::views::values) {
-            conn->deliver(message);
+            encrypt(conn->get_remote_id(), message);
+            conn->deliver(*message);
         }
     }
 
     void Node::send_message(const std::string& id, const std::string& message) {
-        VecMessage mes(get_container_from_string(message));
-        mes.encrypt();
+        auto mes = std::make_shared<VecMessage>(get_container_from_string(message));
+        encrypt(id, mes);
         do_send_message(id, mes);
     }
 
-    void Node::send_message(const std::string& id, VecMessage message) {
-        message.encrypt();
+    void Node::send_message(const std::string& id, const MessagePtr& message) {
+        encrypt(id, message);
         do_send_message(id, message);
     }
 
@@ -225,7 +228,7 @@ namespace cp2p {
      * @param id node-to-send-a-message's id
      * @param message message to send
      */
-    void Node::do_send_message(const std::string& id, const VecMessage& message) {
+    void Node::do_send_message(const std::string& id, const MessagePtr& message) {
         std::lock_guard lock(mutex_);
 
         const auto it = connections_.find(id);
@@ -234,7 +237,8 @@ namespace cp2p {
             return;
         }
 
-        it->second->deliver(message);
+        assert(message->is_encrypted());
+        it->second->deliver(*message);
     }
 
     /**
@@ -389,7 +393,7 @@ namespace cp2p {
 
                 spdlog::info("[Node::receive] Disconnected from {}", id);
             } else if (msg->get_type() == MessageType::TEXT) {
-                msg->decrypt();
+                decrypt(msg);
                 spdlog::info("Received [{}]: {}", conn->get_remote_id(), get_string_from_container(msg->get_message()));
             } else if (msg->get_type() == MessageType::SEARCH) {
                 const json node = search_node(get_string_from_container(msg->get_message()));
@@ -406,10 +410,29 @@ namespace cp2p {
         }
 
         message->encrypt();
+        assert(message->is_encrypted());
+
+        const auto& aes_key = message->get_aes_key();
+        const auto& aes_iv = message->get_aes_iv();
+
+        auto* target_rsa_key = it->second.get();
+        const auto& aes_key_encrypted = rsa::RSAKeyPair::encrypt(aes_key.begin(), aes_key.end(), target_rsa_key);
+        const auto& aes_iv_encrypted = rsa::RSAKeyPair::encrypt(aes_iv.begin(), aes_iv.end(), target_rsa_key);
+
+        message->set_aes(aes_key_encrypted, aes_iv_encrypted);
     }
 
-    void Node::decrypt(const MessagePtr& message) {
+    void Node::decrypt(const MessagePtr& message) const {
+        const auto& aes_key_encrypted = message->get_aes_key();
+        const auto& aes_iv_encrypted = message->get_aes_iv();
+
+        const auto& decrypted_aes_key = identity_->rsa.decrypt(aes_key_encrypted.begin(), aes_key_encrypted.end());
+        const auto& decrypted_aes_iv = identity_->rsa.decrypt(aes_iv_encrypted.begin(), aes_iv_encrypted.end());
+
+        message->set_aes(decrypted_aes_key, decrypted_aes_iv);
+
         message->decrypt();
+        assert(!message->is_encrypted());
     }
 
     json Node::search_node(const std::string& target_id) {

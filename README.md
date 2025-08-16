@@ -18,7 +18,9 @@ AES key is used to encrypt the messages, RSA - to encrypt AES key
 2) `openssl`
 3) `spdlog`
 4) `nlohmann/json`
-5) `google test (optionally)`
+5) `protobuf`
+6) `protoc`
+7) `google test (optionally)`
 
 ### How to run?
 1) Build the project with cmake 
