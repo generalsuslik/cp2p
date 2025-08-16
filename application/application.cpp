@@ -28,6 +28,12 @@ void Application::run(int argc, char* argv[]) {
 
     auto node = std::make_shared<cp2p::Node>(host_, port_);
     node->run();
+    std::cout << "Do u want to be a hub? ";
+    std::string ans;
+    std::cin >> ans;
+    if (ans == "y") {
+        node->set_hub(true);
+    }
 
     std::string line;
     while (true) {
