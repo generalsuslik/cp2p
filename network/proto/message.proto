@@ -1,28 +1,28 @@
 syntax = "proto2";
 
+enum EMessageType {
+  ACCEPT = 0;
+  DISCONNECT = 1;
+  HANDSHAKE = 2;
+  SEARCH = 3;
+  SEARCH_RESPONSE = 4;
+  TEXT = 5;
+}
+
+message TMessageHeader {
+  required EMessageType message_type = 1 [default = TEXT];
+  required uint64       message_length = 2 [default = 0];
+}
+
+message TAes {
+  required bytes aes = 1;
+  required uint64 aes_len = 2;
+
+  required bytes iv = 3;
+  required uint64 iv_len = 4;
+}
+
 message TEncryptedMessage {
-  message TMessageHeader {
-    enum EMessageType {
-      ACCEPT = 0;
-      DISCONNECT = 1;
-      HANDSHAKE = 2;
-      SEARCH = 3;
-      SEARCH_RESPONSE = 4;
-      TEXT = 5;
-    }
-
-    required EMessageType message_type = 1 [default = TEXT];
-    required uint64       message_length = 2 [default = 0];
-  }
-
-  message TAes {
-    required bytes aes = 1;
-    required uint64 aes_len = 2;
-
-    required bytes iv = 3;
-    required uint64 iv_len = 4;
-  }
-
   required TMessageHeader message_header = 1;
 
   optional TAes aes = 2;

@@ -79,12 +79,12 @@ namespace cp2p {
             message_.ParseFromArray(ptr, size);
         }
 
-        TEncryptedMessage_TMessageHeader* get_mut_header() {
+        TMessageHeader* get_mut_header() {
             return message_.mutable_message_header();
         }
 
         [[nodiscard]]
-        TEncryptedMessage_TMessageHeader get_header() const {
+        TMessageHeader get_header() const {
             return message_.message_header();
         }
 
@@ -96,7 +96,7 @@ namespace cp2p {
 
         [[nodiscard]]
         std::vector<std::uint8_t> get_aes_key() const {
-            const TEncryptedMessage_TAes* aes = &message_.aes();
+            const TAes* aes = &message_.aes();
 
             const auto* data = reinterpret_cast<const std::uint8_t*>(aes->aes().data());
             std::vector<std::uint8_t> aes_key(data, data + aes->aes_len());
@@ -105,7 +105,7 @@ namespace cp2p {
 
         [[nodiscard]]
         std::vector<std::uint8_t> get_aes_iv() const {
-            const TEncryptedMessage_TAes* aes = &message_.aes();
+            const TAes* aes = &message_.aes();
 
             const auto* data = reinterpret_cast<const std::uint8_t*>(aes->iv().data());
             std::vector<std::uint8_t> aes_iv(data, data + aes->iv_len());
@@ -113,7 +113,7 @@ namespace cp2p {
         }
 
         void set_aes(const std::vector<std::uint8_t>& aes_key, const std::vector<std::uint8_t>& aes_iv) {
-            TEncryptedMessage_TAes* aes = message_.mutable_aes();
+            TAes* aes = message_.mutable_aes();
 
             aes->set_aes(aes_key.data(), aes_key.size());
             aes->set_aes_len(aes_key.size());
@@ -170,38 +170,39 @@ namespace cp2p {
         }
 
         void set_message(const MessageContainer& message) {
-            TEncryptedMessage_TMessageHeader* header = get_mut_header();
+            TMessageHeader* header = get_mut_header();
             header->set_message_length(message.size());
 
             message_.set_message(message.data(), message.size());
         }
 
         void set_message_type(const MessageType type) {
-            TEncryptedMessage_TMessageHeader* header = get_mut_header();
+            TMessageHeader* header = get_mut_header();
 
             switch (type) {
                 case MessageType::ACCEPT:
-                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_ACCEPT);
+                    header->set_message_type(ACCEPT);
                     break;
                 case MessageType::DISCONNECT:
-                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_DISCONNECT);
+                    header->set_message_type(DISCONNECT);
                     break;
                 case MessageType::HANDSHAKE:
-                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_HANDSHAKE);
+                    header->set_message_type(HANDSHAKE);
                     break;
                 case MessageType::SEARCH:
-                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_SEARCH);
+                    header->set_message_type(SEARCH);
                     break;
                 case MessageType::SEARCH_RESPONSE:
-                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_SEARCH_RESPONSE);
+                    header->set_message_type(SEARCH_RESPONSE);
                     break;
                 default:
-                    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_TEXT);
+                    header->set_message_type(TEXT);
                     break;
             }
         }
 
-        friend std::ostream& operator<<(std::ostream& os, const Message& message);
+        template <CMessageContainer Container>
+        friend std::ostream& operator<<(std::ostream& os, const Message<Container>& message);
 
     private:
         TEncryptedMessage message_;

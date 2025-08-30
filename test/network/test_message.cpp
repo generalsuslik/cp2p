@@ -36,11 +36,11 @@ TEST(TestMessage, test_encrypt_decrypt_message) {
 
     TEncryptedMessage message;
 
-    TEncryptedMessage_TMessageHeader* header = message.mutable_message_header();
-    header->set_message_type(TEncryptedMessage_TMessageHeader_EMessageType_HANDSHAKE);
+    TMessageHeader* header = message.mutable_message_header();
+    header->set_message_type(HANDSHAKE);
     header->set_message_length(encrypted_message.size());
 
-    TEncryptedMessage_TAes* aes = message.mutable_aes();
+    TAes* aes = message.mutable_aes();
     aes->set_aes(aes_key.data(), aes_key.size());
     aes->set_aes_len(aes_key.size());
     aes->set_iv(aes_iv.data(), aes_iv.size());
@@ -56,7 +56,7 @@ TEST(TestMessage, test_encrypt_decrypt_message) {
     ASSERT_EQ(encrypted_len, encrypted_serialized.size());
     ASSERT_EQ(encrypted_serialized_vector, encrypted_message);
 
-    const TEncryptedMessage_TAes* aes2 = message.mutable_aes();
+    const TAes* aes2 = message.mutable_aes();
     const auto* aes_data = reinterpret_cast<const std::uint8_t*>(aes2->aes().data());
     const std::vector<std::uint8_t> decrypted_aes(aes_data, aes_data + aes2->aes_len());
     ASSERT_EQ(decrypted_aes.size(), aes_key.size());
