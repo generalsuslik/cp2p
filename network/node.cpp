@@ -30,11 +30,6 @@ namespace {
         }
 
         const std::vector<std::uint8_t> public_key_data(separator_it + 1, handshake_data.end());
-        for (const auto& byte : public_key_data) {
-            std::cout << byte;
-        }
-        std::cout << std::endl;
-
         assert(handshake_data.size() == public_key_data.size() + id.size() + 1);
 
         return { id, cp2p::rsa::to_public_key(public_key_data) };
@@ -52,10 +47,11 @@ namespace cp2p {
     Node::Node() : Node("0.0.0.0", 9000) {}
 
     Node::Node(const std::string& host, const std::uint16_t port, const bool is_hub)
-            : acceptor_(io_context_)
-            , is_hub_(is_hub)
-            , is_active_(false)
-            , identity_(std::make_shared<NodeIdentity>()) {
+        : acceptor_(io_context_)
+        , is_hub_(is_hub)
+        , is_active_(false)
+        , identity_(std::make_shared<NodeIdentity>())
+    {
         identity_->id = std::move(generate_id(identity_->rsa.to_public_string()));
         std::tie(identity_->host, identity_->port) = std::tie(host, port);
 
@@ -422,7 +418,7 @@ namespace cp2p {
         message->set_aes(aes_key_encrypted, aes_iv_encrypted);
     }
 
-    void Node::decrypt(const MessagePtr& message) const {
+    void Node::decrypt(MessagePtr message) const {
         const auto& aes_key_encrypted = message->get_aes_key();
         const auto& aes_iv_encrypted = message->get_aes_iv();
 

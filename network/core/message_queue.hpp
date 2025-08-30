@@ -25,9 +25,6 @@ namespace cp2p {
         MessageQueue(const MessageQueue&) = delete;
         MessageQueue& operator=(const MessageQueue&) = delete;
 
-        MessageQueue(MessageQueue&&) noexcept = delete;
-        MessageQueue& operator=(MessageQueue&&) noexcept = delete;
-
         ~MessageQueue() {
             deque_.clear();
         }

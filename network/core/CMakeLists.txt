@@ -1,14 +1,13 @@
-set(TARGET cp2p_network)
+set(TARGET cp2p_network_core)
 
 set(SOURCES
-        ${CMAKE_SOURCE_DIR}/network/node.cpp
-        ${CMAKE_SOURCE_DIR}/network/node.hpp
+        ${CMAKE_SOURCE_DIR}/network/core/connection.cpp
+        ${CMAKE_SOURCE_DIR}/network/core/message.cpp
 )
 
-add_subdirectory(core)
-add_subdirectory(graph)
+add_subdirectory(proto)
 
-add_library(cp2p_network
+add_library(cp2p_network_core
         ${SOURCES}
 )
 
@@ -19,14 +18,13 @@ target_include_directories(${TARGET}
 )
 
 target_link_libraries(${TARGET}
-    PRIVATE
+    PUBLIC
         Boost::system
         nlohmann_json::nlohmann_json
         spdlog::spdlog_header_only
 
         cp2p_crypto
-        cp2p_graph
-        cp2p_network_core
+        network_proto
         util
 )
 

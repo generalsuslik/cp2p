@@ -5,8 +5,9 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
-#include "network/message.hpp"
-#include "message_queue.hpp"
+#include "message.hpp"
+
+#include "network/core/message_queue.hpp"
 
 #include <boost/asio.hpp>
 
@@ -44,7 +45,15 @@ namespace cp2p {
         };
 
     public:
+        Connection();
+
         explicit Connection(asio::io_context& io_context);
+
+        Connection(const Connection&) = delete;
+        Connection& operator=(const Connection&) = delete;
+
+        Connection(Connection&&) noexcept;
+        Connection& operator=(Connection&&) noexcept;
 
         ~Connection();
 
@@ -82,6 +91,24 @@ namespace cp2p {
         std::string remote_id_;
         std::atomic_bool is_initialized_;
         std::atomic_bool is_closed_;
+    };
+
+    struct ConnPtrHash {
+        size_t operator()(const std::weak_ptr<Connection>& wp) const {
+            if (auto sp = wp.lock()) {
+                return std::hash<Connection*>()(sp.get());
+            }
+            return 0;
+        }
+    };
+
+    struct ConnPtrEqual {
+        bool operator()(
+            const std::weak_ptr<Connection>& a,
+            const std::weak_ptr<Connection>& b
+        ) const {
+            return !a.owner_before(b) && !b.owner_before(a);
+        }
     };
 
 } // cp2p

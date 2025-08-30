@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "crypto/aes.hpp"
-#include "network/message.hpp"
+#include "../../network/core/message.hpp"
 #include "util/util.hpp"
 
 #include "test_util/test_util.hpp"

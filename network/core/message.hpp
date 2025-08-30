@@ -7,7 +7,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "proto/message.pb.h"
+#include "cmake-build-debug/network/core/proto/message.pb.h"
 
 #include "crypto/aes.hpp"
 #include "util/util.hpp"
@@ -57,6 +57,8 @@ namespace cp2p {
         void decrypt() {
             const auto& aes_key = get_aes_key();
             const auto& aes_iv = get_aes_iv();
+            assert(aes_key.size() == aes::key_length);
+            assert(aes_iv.size() == aes::iv_length);
 
             const auto& message = get_vec_message();
             const auto& decrypted_message = aes::aes_decrypt(message, aes_key, aes_iv);
@@ -201,7 +203,8 @@ namespace cp2p {
             }
         }
 
-        friend std::ostream& operator<<(std::ostream& os, const Message& message);
+        template <CMessageContainer Container>
+        friend std::ostream& operator<<(std::ostream& os, const Message<Container>& message);
 
     private:
         TEncryptedMessage message_;

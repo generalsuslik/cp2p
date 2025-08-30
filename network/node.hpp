@@ -5,10 +5,10 @@
 #ifndef PEER_H
 #define PEER_H
 
-#include "connection.hpp"
+#include "core/connection.hpp"
 
 #include "crypto/rsa.hpp"
-#include "network/message.hpp"
+#include "core/message.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
@@ -162,7 +162,7 @@ namespace cp2p {
 
         void encrypt(const ID& target_id, const MessagePtr& message);
 
-        void decrypt(const MessagePtr& message) const;
+        void decrypt(MessagePtr message) const;
 
         json search_node(const std::string& target_id);
 
