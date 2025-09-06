@@ -2,15 +2,8 @@ set(TARGET cp2p_network)
 
 set(SOURCES
         ${CMAKE_SOURCE_DIR}/network/node.cpp
-        ${CMAKE_SOURCE_DIR}/network/node.hpp
-
         ${CMAKE_SOURCE_DIR}/network/connection.cpp
-        ${CMAKE_SOURCE_DIR}/network/connection.hpp
-
         ${CMAKE_SOURCE_DIR}/network/message.cpp
-        ${CMAKE_SOURCE_DIR}/network/message.hpp
-
-        ${CMAKE_SOURCE_DIR}/network/message_queue.hpp
 )
 
 add_subdirectory(proto)

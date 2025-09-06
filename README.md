@@ -36,21 +36,40 @@ AES key is used to encrypt the messages, RSA - to encrypt AES key
 ```
 
 ### Usage example:
-1) Local network (via wi-fi)
-    #### 🖥️ terminal1:
-    ```bash
-    ./cp2p_build 192.168.2.12 1234
-    ```
-    #### 🖥️ terminal2:
-    ```bash
-    ./cp2p_build 192.168.2.13 1234
-    ```
-2) On local host:
-   #### 🖥️ terminal1:
-    ```bash
-    ./cp2p_build 1234
-    ```
-   #### 🖥️ terminal2:
-    ```bash
-    ./cp2p_build 1234
-    ```
+1) Start
+   1) Local network (via wi-fi)
+      #### 🖥️ terminal1:
+      ```bash
+      ./cp2p_build 192.168.2.12 1234
+      ```
+      #### 🖥️ terminal2:
+      ```bash
+      ./cp2p_build 192.168.2.13 1234
+      ```
+   2) On local host:
+      #### 🖥️ terminal1:
+       ```bash
+       ./cp2p_build 1234
+       ```
+      #### 🖥️ terminal2:
+       ```bash
+       ./cp2p_build 1234
+       ```
+2) Connect to peers 
+   1) Connect directly
+      ```bash
+      connect -ip <host> <port>
+      ```
+   2) Connect via hub:
+       ```bash
+       # yet not supported
+       ```
+3) Send messages
+   1) Send directly
+      ```bash
+      send <hash> <message>
+      ```
+   2) Broadcast the message to all connected peers:
+       ```bash
+       <message>
+       ```

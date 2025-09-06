@@ -1,9 +1,6 @@
 add_library(cp2p_crypto
-        ${CMAKE_SOURCE_DIR}/crypto/aes.hpp
         ${CMAKE_SOURCE_DIR}/crypto/aes.cpp
-        ${CMAKE_SOURCE_DIR}/crypto/rsa.hpp
         ${CMAKE_SOURCE_DIR}/crypto/rsa.cpp
-        ${CMAKE_SOURCE_DIR}/crypto/util.hpp
         ${CMAKE_SOURCE_DIR}/crypto/util.cpp
 )
 

@@ -12,6 +12,7 @@ enum EMessageType {
 message TMessageHeader {
   required EMessageType message_type = 1 [default = TEXT];
   required uint64       message_length = 2 [default = 0];
+  optional bool         broadcasting = 3 [default = false];
 }
 
 message TAes {

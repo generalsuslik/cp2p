@@ -30,10 +30,6 @@ namespace {
         }
 
         const std::vector<std::uint8_t> public_key_data(separator_it + 1, handshake_data.end());
-        for (const auto& byte : public_key_data) {
-            std::cout << byte;
-        }
-        std::cout << std::endl;
 
         assert(handshake_data.size() == public_key_data.size() + id.size() + 1);
 
@@ -52,10 +48,11 @@ namespace cp2p {
     Node::Node() : Node("0.0.0.0", 9000) {}
 
     Node::Node(const std::string& host, const std::uint16_t port, const bool is_hub)
-            : acceptor_(io_context_)
-            , is_hub_(is_hub)
-            , is_active_(false)
-            , identity_(std::make_shared<NodeIdentity>()) {
+        : acceptor_(io_context_)
+        , is_hub_(is_hub)
+        , is_active_(false)
+        , identity_(std::make_shared<NodeIdentity>())
+    {
         identity_->id = std::move(generate_id(identity_->rsa.to_public_string()));
         std::tie(identity_->host, identity_->port) = std::tie(host, port);
 
@@ -198,12 +195,11 @@ namespace cp2p {
      *
      * @param message message to send
      */
-    void Node::broadcast(const MessagePtr& message) {
+    void Node::broadcast(const std::string& message) {
         std::lock_guard lock(mutex_);
 
         for (const auto& conn : connections_ | std::views::values) {
-            encrypt(conn->get_remote_id(), message);
-            conn->deliver(*message);
+            send_message(conn->get_remote_id(), message);
         }
     }
 
@@ -229,8 +225,6 @@ namespace cp2p {
      * @param message message to send
      */
     void Node::do_send_message(const std::string& id, const MessagePtr& message) {
-        std::lock_guard lock(mutex_);
-
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
             spdlog::error("[Node::send_message] id: {} not found", id);
@@ -393,8 +387,18 @@ namespace cp2p {
 
                 spdlog::info("[Node::receive] Disconnected from {}", id);
             } else if (msg->get_type() == MessageType::TEXT) {
-                decrypt(msg);
-                spdlog::info("Received [{}]: {}", conn->get_remote_id(), get_string_from_container(msg->get_message()));
+                if (msg->is_broadcasting()) {
+                    try {
+                        decrypt(msg);
+                        spdlog::info("Received [{}]: {}", conn->get_remote_id(), get_string_from_container(msg->get_message()));
+                    } catch (const aes::aes_exception&) {
+                        // do nothing
+                        // because the message has arrived not to target id
+                    }
+                } else {
+                    decrypt(msg);
+                    spdlog::info("Received [{}]: {}", conn->get_remote_id(), get_string_from_container(msg->get_message()));
+                }
             } else if (msg->get_type() == MessageType::SEARCH) {
                 const json node = search_node(get_string_from_container(msg->get_message()));
                 std::cout << node << std::endl;

@@ -4,7 +4,6 @@ set(TARGET test_util)
 
 add_library(test_util
         ${CMAKE_SOURCE_DIR}/test/test_util/test_util.cpp
-        ${CMAKE_SOURCE_DIR}/test/test_util/test_util.hpp
 
 )
 

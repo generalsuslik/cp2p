@@ -42,6 +42,12 @@ namespace cp2p {
             set_message(message);
         }
 
+        Message(const Message& other) = default;
+        Message& operator=(const Message& other) = default;
+
+        Message(Message&& other) noexcept = default;
+        Message& operator=(Message&& other) noexcept = default;
+
         void encrypt() {
             if (message_.has_aes()) {
                 throw std::runtime_error("Message is already encrypted");
@@ -84,7 +90,7 @@ namespace cp2p {
         }
 
         [[nodiscard]]
-        TMessageHeader get_header() const {
+        const TMessageHeader& get_header() const {
             return message_.message_header();
         }
 
@@ -146,6 +152,17 @@ namespace cp2p {
         [[nodiscard]]
         bool is_encrypted() const {
             return is_encrypted_;
+        }
+
+        void set_broadcasting(const bool value) {
+            auto* header = get_mut_header();
+            header->set_broadcasting(value);
+        }
+
+        [[nodiscard]]
+        bool is_broadcasting() const {
+            const auto& header = get_header();
+            return header.broadcasting();
         }
 
     private:

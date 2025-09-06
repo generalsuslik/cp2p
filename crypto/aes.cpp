@@ -19,12 +19,12 @@ namespace cp2p::aes {
 
         // Generate random key
         if (RAND_bytes(key.data(), key_length) != 1) {
-            throw std::runtime_error("Error generating AES key.");
+            throw aes_exception("Error generating AES key.");
         }
 
         // Generate random IV
         if (RAND_bytes(iv.data(), iv_length) != 1) {
-            throw std::runtime_error("Error generating AES IV.");
+            throw aes_exception("Error generating AES IV.");
         }
 
         return { key, iv };
@@ -37,13 +37,13 @@ namespace cp2p::aes {
     ) {
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
         if (!ctx) {
-            throw std::runtime_error("Failed to create EVP_CIPHER_CTX: "
+            throw aes_exception("Failed to create EVP_CIPHER_CTX: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
 
         if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, key.data(), iv.data()) != 1) {
             EVP_CIPHER_CTX_free(ctx);
-            throw std::runtime_error("Failed to initialize AES encryption: "
+            throw aes_exception("Failed to initialize AES encryption: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
 
@@ -56,14 +56,14 @@ namespace cp2p::aes {
                 reinterpret_cast<const unsigned char*>(plaintext.data()),
                 static_cast<int>(plaintext.size())) != 1) {
             EVP_CIPHER_CTX_free(ctx);
-            throw std::runtime_error("AES encryption failed: "
+            throw aes_exception("AES encryption failed: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
         ciphertext_len = len;
 
         if (EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len) != 1) {
             EVP_CIPHER_CTX_free(ctx);
-            throw std::runtime_error("AES encryption finalization failed: "
+            throw aes_exception("AES encryption finalization failed: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
         ciphertext_len += len;
@@ -80,13 +80,13 @@ namespace cp2p::aes {
     ) {
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
         if (!ctx) {
-            throw std::runtime_error("Failed to create EVP_CIPHER_CTX: "
+            throw aes_exception("Failed to create EVP_CIPHER_CTX: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
 
         if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, key.data(), iv.data()) != 1) {
             EVP_CIPHER_CTX_free(ctx);
-            throw std::runtime_error("Failed to initialize AES decryption: "
+            throw aes_exception("Failed to initialize AES decryption: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
 
@@ -98,14 +98,14 @@ namespace cp2p::aes {
                 ciphertext.data(),
                 static_cast<int>(ciphertext.size())) != 1) {
             EVP_CIPHER_CTX_free(ctx);
-            throw std::runtime_error("AES decryption failed: "
+            throw aes_exception("AES decryption failed: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
         plaintext_len = len;
 
         if (EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len) != 1) {
             EVP_CIPHER_CTX_free(ctx);
-            throw std::runtime_error("AES decryption finalization failed: "
+            throw aes_exception("AES decryption finalization failed: "
                 + std::string(ERR_error_string(ERR_get_error(), nullptr)));
         }
         plaintext_len += len;
