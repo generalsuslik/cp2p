@@ -4,7 +4,6 @@ set(TARGET cp2p_application)
 
 add_library(cp2p_application
         application.cpp
-        application.hpp
 )
 
 target_include_directories(${TARGET}

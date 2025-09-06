@@ -5,6 +5,7 @@
 #ifndef AES_HPP
 #define AES_HPP
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -55,6 +56,11 @@ namespace cp2p::aes {
         const std::vector<unsigned char>& key,
         const std::vector<unsigned char>& iv
     );
+
+    class aes_exception final : public std::runtime_error {
+    public:
+        explicit aes_exception(const std::string& message) : std::runtime_error(message) {}
+    };
 
 
 } // cp2p

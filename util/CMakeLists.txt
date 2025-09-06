@@ -4,7 +4,6 @@ set(TARGET util)
 
 set(SOURCES
         ${CMAKE_SOURCE_DIR}/util/util.cpp
-        ${CMAKE_SOURCE_DIR}/util/util.hpp
 )
 
 add_library(util

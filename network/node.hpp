@@ -93,7 +93,7 @@ namespace cp2p {
          *
          * @param message message to send
          */
-        void broadcast(const MessagePtr& message);
+        void broadcast(const std::string& message);
 
         void send_message(const std::string& id, const std::string& message);
 
