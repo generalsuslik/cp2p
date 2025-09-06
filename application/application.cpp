@@ -74,7 +74,6 @@ void Application::run(int argc, char* argv[]) {
                 std::cout << conn->get_remote_id() << std::endl;
             }
         } else {
-            // cp2p::MessagePtr msg = std::make_shared<cp2p::VecMessage>(cp2p::get_container_from_string(line));
             node->broadcast(line);
         }
     }

@@ -243,8 +243,6 @@ namespace cp2p {
      * @param on_success callback called after a message is sent
      */
     void Node::do_send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success) {
-        std::lock_guard lock(mutex_);
-
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
             spdlog::error("[Node::send_message] id: {} not found", id);
