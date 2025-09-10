@@ -65,6 +65,13 @@ void Application::run(int argc, char* argv[]) {
             } else {
                 std::cout << "Usage: " << argv[0] << "[-h|-ip] [<host>] <port>" << std::endl;
             }
+        } else if (line.starts_with("disconnect ")) {
+            std::istringstream iss(line);
+            std::string command;
+            std::string id;
+            iss >> command >> id;
+
+            node->disconnect_from(id);
         } else if (line == "exit") {
             node->stop();
             break;
