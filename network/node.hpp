@@ -124,13 +124,13 @@ namespace cp2p {
         void disconnect_from_all(const std::function<void()>& on_success);
 
         /**
-         * @brief Disconnects from the node with id_ == id
+         * @brief Disconnects from the node with id_ == id UNDER LOCK
          *
          * @param id node to disconnect 's id
          */
-        void disconnect(const std::string& id);
+        void disconnect_from(const ID& id);
 
-        void remove_connection(const std::string& id);
+        void remove_connection(const std::string& id, const std::lock_guard<std::mutex>& lock);
 
         /**
          * @brief Returns self id
@@ -163,6 +163,13 @@ namespace cp2p {
         void encrypt(const ID& target_id, const MessagePtr& message);
 
         void decrypt(const MessagePtr& message) const;
+
+        /**
+         * @brief Disconnects from the node with id_ == id WITHOUT LOCK
+         *
+         * @param id node to disconnect 's id
+         */
+        void disconnect(const std::string& id);
 
         json search_node(const std::string& target_id);
 

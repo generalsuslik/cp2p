@@ -271,6 +271,20 @@ namespace cp2p {
         on_success();
     }
 
+    void Node::disconnect_from(const ID& id) {
+        std::lock_guard lock(mutex_);
+
+        auto it = connections_.find(id);
+        if (it == connections_.end()) {
+            spdlog::error("[Node::disconnect_from] id: {} not found", id);
+            return;
+        }
+
+        spdlog::info("[Node::disconnect] Disconnecting from {}...", id);
+        it->second->close();
+        remove_connection(id, lock);
+    }
+
     /**
      * @brief Disconnects from the node with id_ == id
      *
@@ -288,8 +302,7 @@ namespace cp2p {
         connections_[id]->close();
     }
 
-    void Node::remove_connection(const std::string& id) {
-        std::lock_guard lock(mutex_);
+    void Node::remove_connection(const std::string& id, const std::lock_guard<std::mutex>& lock) {
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
             spdlog::error("[Node::remove_connection] id: {} not found", id);
@@ -380,7 +393,7 @@ namespace cp2p {
                 {
                     std::lock_guard lock(mutex_);
                     connections_[id]->close();
-                    remove_connection(id);
+                    remove_connection(id, lock);
                 }
 
                 spdlog::info("[Node::receive] Disconnected from {}", id);
