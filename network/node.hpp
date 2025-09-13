@@ -210,7 +210,7 @@ namespace cp2p {
     private:
         asio::io_context io_context_;
         std::vector<std::thread> io_workers_;
-        inline static std::uint32_t num_workers = 1;
+        inline static std::uint32_t num_workers = std::thread::hardware_concurrency();
 
         tcp::acceptor acceptor_;
 
