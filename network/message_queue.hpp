@@ -7,7 +7,7 @@
 
 #include <condition_variable>
 #include <deque>
-#include <mutex>
+#include <shared_mutex>
 
 namespace cp2p {
 
@@ -33,49 +33,49 @@ namespace cp2p {
         }
 
         const T& front() {
-            std::unique_lock lock(mutex_);
+            std::shared_lock lock(mutex_);
             cond_.wait(lock, [this] { return !deque_.empty(); });
 
             return deque_.front();
         }
 
         const T& back() {
-            std::unique_lock lock(mutex_);
+            std::shared_lock lock(mutex_);
             cond_.wait(lock, [this] { return !deque_.empty(); });
 
             return deque_.back();
         }
 
         void push_front(const T& item) {
-            std::lock_guard lock(mutex_);
+            std::unique_lock lock(mutex_);
             deque_.emplace_front(std::move(item));
             cond_.notify_one();
         }
 
         void push_back(const T& item) {
-            std::lock_guard lock(mutex_);
+            std::unique_lock lock(mutex_);
             deque_.emplace_back(std::move(item));
             cond_.notify_one();
         }
 
         bool empty() {
-            std::lock_guard lock(mutex_);
+            std::shared_lock lock(mutex_);
             return deque_.empty();
         }
 
         std::size_t size() {
-            std::lock_guard lock(mutex_);
+            std::shared_lock lock(mutex_);
             return deque_.size();
         }
 
         void clear() {
-            std::lock_guard lock(mutex_);
+            std::unique_lock lock(mutex_);
             deque_.clear();
             cond_.notify_one();
         }
 
         T pop_front() {
-            std::lock_guard lock(mutex_);
+            std::unique_lock lock(mutex_);
             auto item = std::move(deque_.front());
             deque_.pop_front();
             cond_.notify_one();
@@ -83,7 +83,7 @@ namespace cp2p {
         }
 
         T pop_back() {
-            std::lock_guard lock(mutex_);
+            std::unique_lock lock(mutex_);
             auto item = std::move(deque_.back());
             deque_.pop_back();
             cond_.notify_one();
@@ -91,7 +91,7 @@ namespace cp2p {
         }
 
     protected:
-        std::mutex mutex_;
+        std::shared_mutex mutex_;
         std::deque<T> deque_;
         std::condition_variable cond_;
     };
