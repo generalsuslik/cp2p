@@ -30,7 +30,6 @@ namespace {
         }
 
         const std::vector<std::uint8_t> public_key_data(separator_it + 1, handshake_data.end());
-
         assert(handshake_data.size() == public_key_data.size() + id.size() + 1);
 
         return { id, cp2p::rsa::to_public_key(public_key_data) };
@@ -117,26 +116,6 @@ namespace cp2p {
                     th.join();
                 }
             }
-        });
-    }
-
-    /**
-     * @brief Connects to target_id via hub's hub_host & hub's hub_port
-     *
-     * @param target_id id to connect to
-     * @param server_host host of the node that will be an intermediate
-     * @param server_port port of the node that will be an intermediate
-     */
-    void Node::connect_to(const std::string& target_id, const std::string& server_host, const std::uint16_t server_port) {
-        json hub = get_hub_data(server_host, server_port);
-
-        const std::string hub_id = hub["node_id"].get<std::string>();
-        const std::string hub_host = hub["host"].get<std::string>();
-        const std::uint16_t hub_port = hub["port"].get<std::uint16_t>();
-
-        connect_to(hub_host, hub_port, [this, hub_id, target_id] {
-            auto search_node_message = std::make_shared<VecMessage>(get_container_from_string(target_id), MessageType::SEARCH);
-            do_send_message(hub_id, search_node_message);
         });
     }
 
@@ -615,5 +594,4 @@ namespace cp2p {
 
 
 } // cp2p
-
 

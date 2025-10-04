@@ -28,9 +28,13 @@ namespace cp2p {
     using VecMessage = Message<std::vector<std::uint8_t>>;
     using MessagePtr = std::shared_ptr<VecMessage>;
 
+    using ConnPtr = std::shared_ptr<Connection>;
+
+    constexpr std::uint32_t NUM_THREADS = 2;
+
     /**
      * @brief Represents a node in the network \n
-     * It can be either a hub or general node.
+     * It can be either a hub or a general node.
      *
      * Hubs allow other nodes to connect to their `passions` via themselves
      * losing the anonymity.
@@ -69,15 +73,6 @@ namespace cp2p {
          * Also, it sends a disconnect request to the hub's server if is_hub is set to true
          */
         void stop();
-
-        /**
-         * @brief Connects to target_id via hub's hub_cost & hub's hub_port
-         *
-         * @param target_id id to connect to
-         * @param server_host host of the node that will be an intermediate
-         * @param server_port port of the node that will be an intermediate
-         */
-        void connect_to(const std::string& target_id, const std::string& server_host, std::uint16_t server_port);
 
         /**
          * @brief Connects directly to node host:port
@@ -140,7 +135,7 @@ namespace cp2p {
         /**
          * @brief Returns vector of all the node's connections
          */
-        std::vector<std::shared_ptr<Connection>> get_connections();
+        std::vector<ConnPtr> get_connections();
 
         /**
          * @brief sets is_hub value to val
@@ -158,7 +153,7 @@ namespace cp2p {
          */
         void accept();
 
-        void receive(const std::shared_ptr<Connection>& conn);
+        void receive(const ConnPtr& conn);
 
         void encrypt(const ID& target_id, const MessagePtr& message);
 
@@ -210,11 +205,11 @@ namespace cp2p {
     private:
         asio::io_context io_context_;
         std::vector<std::thread> io_workers_;
-        inline static std::uint32_t num_workers = 1;
+        inline static std::uint32_t num_workers = NUM_THREADS;
 
         tcp::acceptor acceptor_;
 
-        std::unordered_map<ID, std::shared_ptr<Connection>> connections_; // "public key hash": conn
+        std::unordered_map<ID, ConnPtr> connections_; // "public key hash": conn
         std::unordered_map<ID, PublicKeyPtr> public_keys_; // "public key hash": public key
 
         std::mutex mutex_;

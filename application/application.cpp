@@ -55,7 +55,8 @@ void Application::run(int argc, char* argv[]) {
                 std::uint16_t hub_port;
 
                 iss >> id >> hub_host >> hub_port;
-                node->connect_to(id, hub_host, hub_port);
+                // NOT SUPPORTED
+                // node->connect_to(id, hub_host, hub_port);
             } else if (mode == "-ip") { // directly via target's ip
                 std::string target_host;
                 std::uint16_t target_port;
