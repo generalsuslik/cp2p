@@ -72,9 +72,6 @@ namespace cp2p {
         stop();
     }
 
-    /**
-     * @brief Runs the node by creating a thread and running io_context in it
-     */
     void Node::run() {
         if (is_active_) {
             return;
@@ -91,11 +88,6 @@ namespace cp2p {
         accept();
     }
 
-    /**
-     * @brief Stops the node by stopping the io_context and joining the thread
-     *
-     * Also, it sends a disconnect request to the hub's server if is_hub is set to true
-     */
     void Node::stop() {
         if (!is_active_) {
             return;
@@ -119,13 +111,6 @@ namespace cp2p {
         });
     }
 
-    /**
-     * @brief Connects directly to node host:port
-     *
-     * @param host node-to-connect-to's host
-     * @param port node-to-connect-to's port
-     * @param on_success just a callback to be executed right after connection (maybe nullptr)
-     */
     void Node::connect_to(const std::string& host, const std::uint16_t port, const std::function<void()>& on_success) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
@@ -169,11 +154,6 @@ namespace cp2p {
             });
     }
 
-    /**
-     * @brief Sends a message to all connected nodes
-     *
-     * @param message message to send
-     */
     void Node::broadcast(const std::string& message) {
         std::lock_guard lock(mutex_);
 
@@ -197,12 +177,6 @@ namespace cp2p {
         do_send_message(id, message, on_success);
     }
 
-    /**
-     * @brief Sends message to node {id}
-     *
-     * @param id node-to-send-a-message's id
-     * @param message message to send
-     */
     void Node::do_send_message(const std::string& id, const MessagePtr& message) {
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
@@ -214,13 +188,6 @@ namespace cp2p {
         it->second->deliver(*message);
     }
 
-    /**
-     * @brief Sends message to node {id}
-     *
-     * @param id node-to-send-message's id
-     * @param message message to send
-     * @param on_success callback called after a message is sent
-     */
     void Node::do_send_message(const std::string& id, const VecMessage& message, const std::function<void()>& on_success) {
         const auto it = connections_.find(id);
         if (it == connections_.end()) {
@@ -232,9 +199,6 @@ namespace cp2p {
         on_success();
     }
 
-    /**
-     * @brief Disconnects from all connected nodes
-     */
     void Node::disconnect_from_all(const std::function<void()>& on_success) {
         std::lock_guard lock(mutex_);
 
@@ -264,11 +228,6 @@ namespace cp2p {
         remove_connection(id, lock);
     }
 
-    /**
-     * @brief Disconnects from the node with id_ == id
-     *
-     * @param id node to disconnect 's id
-     */
     void Node::disconnect(const std::string& id) {
         if (!connections_.contains(id)) {
             spdlog::error("[Node::disconnect] id: {} not found", id);
@@ -290,16 +249,10 @@ namespace cp2p {
         connections_.erase(it);
     }
 
-    /**
-     * @brief Returns self id
-     */
     Node::ID Node::get_id() const {
         return identity_->id;
     }
 
-    /**
-     * @brief Returns vector of all the node's connections
-     */
     std::vector<std::shared_ptr<Connection>> Node::get_connections() {
         std::vector<std::shared_ptr<Connection>> res;
         for (const auto& conn : connections_ | std::views::values) {
@@ -309,11 +262,6 @@ namespace cp2p {
         return res;
     }
 
-    /**
-     * @brief sets is_hub value to val
-     *
-     * @param val boolean to set for is_hub
-     */
     void Node::set_hub(const bool val) {
         is_hub_ = val;
 
@@ -328,12 +276,6 @@ namespace cp2p {
         return crypto::md5_hash(public_key);
     }
 
-    /**
-     * @brief Accepts incoming connections \n
-     * method is called from the constructor \n\n
-     *
-     * Creates a new Connection object
-     */
     void Node::accept() {
         auto new_conn = std::make_shared<Connection>(io_context_);
 
@@ -445,14 +387,6 @@ namespace cp2p {
         inform_server(host, port, http::verb::delete_);
     }
 
-    /**
-     * @brief CALLED ONLY IF is_hub SET TO TRUE \n
-     * Sends to server JSON: { "id": ..., "host": ..., "port": ... }
-     *
-     * @param host server's host
-     * @param port server's port
-     * @param verb post/delete self info from remote server (http::verb::post / http::verb::delete_)
-     */
     void Node::inform_server(const std::string& host, const std::uint16_t port, http::verb verb) {
         tcp::resolver resolver(io_context_);
         const auto endpoints = resolver.resolve(host, std::to_string(port));
@@ -503,14 +437,6 @@ namespace cp2p {
         }
     }
 
-    /**
-     * @brief When the method Node::connect_to is called, it tries to receive one of the hub's info,
-     * so it could connect to target_id via that hub
-     *
-     * @param host - server's host
-     * @param port - server's port
-     * @return hub's info JSON: { "id": ..., "host": ..., "port": ... }
-     */
     json Node::get_hub_data(const std::string& host, const std::uint16_t port) {
         tcp::resolver resolver(io_context_);
         beast::tcp_stream stream(io_context_);
@@ -591,7 +517,6 @@ namespace cp2p {
         VecMessage message(handshake_vec, MessageType::HANDSHAKE);
         return message;
     }
-
 
 } // cp2p
 
