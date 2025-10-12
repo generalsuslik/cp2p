@@ -1,4 +1,4 @@
-add_library(cp2p_crypto
+add_library(cp2p_crypto SHARED
         ${CMAKE_SOURCE_DIR}/crypto/aes.cpp
         ${CMAKE_SOURCE_DIR}/crypto/rsa.cpp
         ${CMAKE_SOURCE_DIR}/crypto/util.cpp
