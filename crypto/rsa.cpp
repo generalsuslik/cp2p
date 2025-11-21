@@ -26,11 +26,6 @@ namespace cp2p::rsa {
         return pkey_.get();
     }
 
-    /*
-     * RSAKeyPair::encrypt and RSAKeyPair::decrypt functions are defined in the
-     * .hpp file because of the templates
-     */
-
     std::string RSAKeyPair::to_public_string() const {
         BIO* bio = BIO_new(BIO_s_mem());
         if (!bio) {
@@ -96,6 +91,5 @@ namespace cp2p::rsa {
 
         pkey_.reset(raw_pkey);
     }
-
 
 } // cp2p::rsa

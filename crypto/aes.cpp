@@ -11,7 +11,6 @@
 
 namespace cp2p::aes {
 
-
     std::pair<std::vector<unsigned char>, std::vector<unsigned char>> generate_aes_key_iv() {
 
         std::vector<unsigned char> key(key_length);
@@ -114,6 +113,5 @@ namespace cp2p::aes {
         EVP_CIPHER_CTX_free(ctx);
         return plaintext;
     }
-
 
 } // cp2p

@@ -11,6 +11,7 @@
 #include <string>
 
 namespace crypto {
+
     std::string md5_hash(const std::string& input) {
         unsigned char digest[digest_length];
         const int err = !EVP_Q_digest(nullptr, "MD5", nullptr, input.c_str(), input.size(), digest, nullptr);
@@ -25,4 +26,5 @@ namespace crypto {
 
         return ss.str();
     }
+
 } // namespace crypto

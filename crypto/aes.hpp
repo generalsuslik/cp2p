@@ -62,7 +62,6 @@ namespace cp2p::aes {
         explicit aes_exception(const std::string& message) : std::runtime_error(message) {}
     };
 
-
 } // cp2p
 
 

@@ -54,11 +54,6 @@ namespace cp2p::rsa {
         [[nodiscard]]
         EVP_PKEY* get() const;
 
-        /*
-         * RSAKeyPair::encrypt and RSAKeyPair::decrypt functions are defined right there, in the
-         * .hpp file because of the templates
-         */
-
         /**
          * @brief Encrypts the collection from begin to end.
          *
