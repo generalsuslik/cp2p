@@ -1,12 +1,12 @@
 add_library(cp2p_crypto SHARED
-        ${CMAKE_SOURCE_DIR}/crypto/aes.cpp
-        ${CMAKE_SOURCE_DIR}/crypto/rsa.cpp
-        ${CMAKE_SOURCE_DIR}/crypto/util.cpp
+        ${CMAKE_SOURCE_DIR}/src/crypto/aes.cpp
+        ${CMAKE_SOURCE_DIR}/src/crypto/rsa.cpp
+        ${CMAKE_SOURCE_DIR}/src/crypto/util.cpp
 )
 
 target_include_directories(cp2p_crypto
     PUBLIC
-        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
         ${OPENSSL_INCLUDE_DIR}
 )
 
