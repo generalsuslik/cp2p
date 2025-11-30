@@ -2,8 +2,8 @@
 // Created by generalsuslik on 22.01.25.
 //
 
-#ifndef PEER_H
-#define PEER_H
+#ifndef NODE_H
+#define NODE_H
 
 #include "connection.hpp"
 
@@ -223,4 +223,4 @@ namespace cp2p {
 
 } // cp2p
 
-#endif //PEER_H
+#endif //NODE_H
