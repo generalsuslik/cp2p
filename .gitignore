@@ -35,3 +35,4 @@
 server/.env
 cmake-build-debug
 build
+.cache
