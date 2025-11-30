@@ -1,9 +1,9 @@
 set(TARGET cp2p_network)
 
 set(SOURCES
-        ${CMAKE_SOURCE_DIR}/network/node.cpp
-        ${CMAKE_SOURCE_DIR}/network/connection.cpp
-        ${CMAKE_SOURCE_DIR}/network/message.cpp
+        ${CMAKE_SOURCE_DIR}/src/network/node.cpp
+        ${CMAKE_SOURCE_DIR}/src/network/connection.cpp
+        ${CMAKE_SOURCE_DIR}/src/network/message.cpp
 )
 
 add_subdirectory(proto)
@@ -15,6 +15,7 @@ add_library(cp2p_network
 target_include_directories(${TARGET}
     PUBLIC
         ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_CURRENT_BINARY_DIR}
 )
 

@@ -13,9 +13,7 @@ target_include_directories(${TARGET}
 
 target_link_libraries(${TARGET}
     PUBLIC
-        cp2p_crypto
-        cp2p_network
-        util
+        cp2p
 )
 
 target_compile_features(${TARGET} PRIVATE cxx_std_20)

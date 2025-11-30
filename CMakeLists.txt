@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 project(cp2p VERSION 1.0.1)
 
-set(TARGET cp2p_build)
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -71,24 +69,8 @@ set(INCLUDE_DIRS
     CACHE INTERNAL ""
 )
 
-add_subdirectory(application)
-add_subdirectory(crypto)
-add_subdirectory(network)
-add_subdirectory(util)
-
-add_executable(${TARGET}
-        ${CMAKE_SOURCE_DIR}/main.cpp
-)
-
-target_include_directories(${TARGET}
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/application
-        ${CMAKE_SOURCE_DIR}/crypto
-        ${CMAKE_SOURCE_DIR}/network
-        ${CMAKE_SOURCE_DIR}/util
-        ${CMAKE_BINARY_DIR}
-)
+add_subdirectory(example)
+add_subdirectory(src)
 
 include_directories(
         /usr/include
@@ -96,14 +78,6 @@ include_directories(
         /usr/include/fmt
         /usr/include/spdlog
         /usr/include/nlohmann
-)
-
-target_link_libraries(${TARGET}
-    PRIVATE
-        cp2p_application
-        cp2p_crypto
-        cp2p_network
-        ${Protobuf_LIBRARIES}
 )
 
 add_subdirectory(test)

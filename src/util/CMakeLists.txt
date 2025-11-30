@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 set(TARGET util)
 
 set(SOURCES
-        ${CMAKE_SOURCE_DIR}/util/util.cpp
+        ${CMAKE_SOURCE_DIR}/src/util/util.cpp
 )
 
 add_library(util
